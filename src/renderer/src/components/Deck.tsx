@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react'
 import { Play, Pause, Lock, Unlock } from 'lucide-react'
 import type { Track } from '@main/db'
 import { getMediaUrl, formatDuration } from '../utils/audio'
+import { useLanguage } from '../i18n'
 
 interface DeckProps {
   deckId: 'A' | 'B'
@@ -35,6 +36,7 @@ export default function Deck({
 }: DeckProps): React.JSX.Element {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const { t } = useLanguage()
 
   // Web Audio Nodes refs
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null)
@@ -362,7 +364,7 @@ export default function Deck({
         if (decoding) {
           ctx.fillStyle = '#a1a1aa'
           ctx.font = '10px sans-serif'
-          ctx.fillText('Dekodiere Welle...', 12, centerY - 8)
+          ctx.fillText(t('deck.loadingWaveform'), 12, centerY - 8)
         }
       }
 
@@ -483,7 +485,7 @@ export default function Deck({
             DECK {deckId}
           </div>
           <div className="text-sm font-bold text-zinc-200 truncate">
-            {track ? track.title : 'Kein Track geladen'}
+            {track ? track.title : t('deck.noTrackLoaded')}
           </div>
           <div className="text-xs text-zinc-500 truncate">{track ? track.artist : '---'}</div>
         </div>
@@ -558,8 +560,8 @@ export default function Deck({
             <button
               onClick={setCuePoint}
               disabled={!track}
-              title="Aktuelle Position als Cue setzen"
-              className="flex-1 text-center py-1.5 rounded bg-zinc-900 text-xs font-semibold text-zinc-400 border border-zinc-900 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30"
+              title={t('deck.setCueTooltip')}
+              className="flex-1 text-center py-1.5 rounded bg-zinc-900 text-xs font-semibold text-zinc-400 border border-zinc-900 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30 cursor-pointer"
             >
               Set Cue
             </button>
@@ -575,7 +577,7 @@ export default function Deck({
           {/* Quick Loops */}
           <div className="space-y-1.5 border-t border-zinc-900/60 pt-2.5">
             <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-              Autoloop (Beats)
+              {t('deck.autoloop')}
             </div>
             <div className="flex gap-1.5">
               {[1, 2, 4, 8].map((beats) => {

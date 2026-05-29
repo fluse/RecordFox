@@ -17,6 +17,7 @@ import {
   getSettings,
   updateSettings,
   migrateDownloadsFolder,
+  renamePlaylist,
   Playlist,
   AppSettings
 } from './db'
@@ -24,6 +25,8 @@ import { getPlaylistInfo, ensureYtdlp } from './downloader'
 import { syncPlaylist, startBackgroundSync, stopBackgroundSync } from './sync'
 import { analyzeBpm } from './bpm'
 import { analyzeKey } from './key'
+import { detectUsbDrives } from './usb'
+import { exportPlaylistToUsb } from './exporter'
 
 // Register custom media protocol to serve local MP3 files securely and support audio streaming/seeking
 protocol.registerSchemesAsPrivileged([
@@ -125,6 +128,15 @@ app.whenReady().then(async () => {
   ipcMain.handle('playlists:delete', (_, id: string) => {
     try {
       deletePlaylistFromDb(id)
+      return { success: true }
+    } catch (e: any) {
+      return { success: false, error: e.message }
+    }
+  })
+
+  ipcMain.handle('playlists:rename', (_, id: string, newTitle: string) => {
+    try {
+      renamePlaylist(id, newTitle)
       return { success: true }
     } catch (e: any) {
       return { success: false, error: e.message }
@@ -261,6 +273,18 @@ app.whenReady().then(async () => {
     if (result.response === 1) return 'change'
     return 'cancel'
   })
+
+  ipcMain.handle('usb:get-drives', async () => {
+    return detectUsbDrives()
+  })
+
+  ipcMain.handle(
+    'playlists:export',
+    async (_, playlistId: string, usbPath: string, forceOverwrite?: boolean) => {
+      if (!mainWindow) return { success: false, error: 'Main window not available' }
+      return exportPlaylistToUsb(playlistId, usbPath, mainWindow, forceOverwrite)
+    }
+  )
 
   ipcMain.on('log-error', (_, msg) => {
     console.error('[Renderer Error]', msg)

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Plus, Loader2, X } from 'lucide-react'
+import { useLanguage } from '../i18n'
 
 interface AddPlaylistModalProps {
   isOpen: boolean
@@ -15,6 +16,7 @@ export default function AddPlaylistModal({
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const { t } = useLanguage()
 
   if (!isOpen) return null
 
@@ -24,7 +26,7 @@ export default function AddPlaylistModal({
 
     // Simple YouTube playlist validation
     if (!url.includes('list=')) {
-      setError('Bitte gib eine gültige YouTube-Playlist-URL ein (muss "list=" enthalten).')
+      setError(t('addPlaylist.errorInvalidUrl'))
       return
     }
 
@@ -36,7 +38,7 @@ export default function AddPlaylistModal({
       setUrl('')
       onClose()
     } catch (e: any) {
-      setError(e.message || 'Fehler beim Hinzufügen der Playlist.')
+      setError(e.message || t('addPlaylist.errorAddFailed'))
     } finally {
       setLoading(false)
     }
@@ -52,14 +54,16 @@ export default function AddPlaylistModal({
           <X className="h-5 w-5" />
         </button>
 
-        <h2 className="mb-4 text-xl font-bold text-zinc-100">YouTube Playlist hinzufügen</h2>
+        <h2 className="mb-4 text-xl font-bold text-zinc-100">{t('addPlaylist.title')}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-400">Playlist URL</label>
+            <label className="mb-1.5 block text-sm font-medium text-zinc-400">
+              {t('addPlaylist.label')}
+            </label>
             <input
               type="text"
-              placeholder="https://www.youtube.com/playlist?list=..."
+              placeholder={t('addPlaylist.placeholder')}
               value={url}
               onChange={(e) => {
                 setUrl(e.target.value)
@@ -77,24 +81,24 @@ export default function AddPlaylistModal({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 cursor-pointer"
             >
-              Abbrechen
+              {t('addPlaylist.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading || !url.trim()}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/95 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/95 disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Wird geladen...
+                  {t('addPlaylist.loading')}
                 </>
               ) : (
                 <>
                   <Plus className="h-4 w-4" />
-                  Hinzufügen
+                  {t('addPlaylist.add')}
                 </>
               )}
             </button>

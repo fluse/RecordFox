@@ -8,7 +8,11 @@ import SplashScreen from './components/SplashScreen'
 import { ChevronDown } from 'lucide-react'
 import { useApp } from './hooks/useApp'
 
-export default function App(): React.JSX.Element {
+import { LanguageProvider, useLanguage } from './i18n'
+import type { UseAppReturn } from './hooks/useApp'
+
+function AppContent({ appState }: { appState: UseAppReturn }): React.JSX.Element {
+  const { t } = useLanguage()
   const [showSplash, setShowSplash] = useState(true)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -27,6 +31,7 @@ export default function App(): React.JSX.Element {
     handleAddPlaylist,
     handleDeletePlaylist,
     handleSyncPlaylist,
+    handleRenamePlaylist,
     handleLoadTrack,
     handleUpdateBpmInState,
     handleUpdateKeyInState,
@@ -34,7 +39,7 @@ export default function App(): React.JSX.Element {
     handleUpdateSettings,
     handleMigrate,
     handleMouseDownSplitter
-  } = useApp()
+  } = appState
 
   const selectedPlaylist = playlists.find((p) => p.id === selectedPlaylistId)
 
@@ -44,25 +49,26 @@ export default function App(): React.JSX.Element {
       {/* Top Half: DJ Mixer Dashboard */}
       <div className="relative flex-shrink-0 z-20">
         <div
-          className="transition-all duration-300 ease-in-out overflow-hidden border-b border-zinc-900 bg-zinc-950/40"
-          style={{
-            maxHeight: isMixerCollapsed ? '0px' : '500px',
-            opacity: isMixerCollapsed ? 0 : 1,
-            borderBottomWidth: isMixerCollapsed ? '0px' : '1px'
-          }}
+          className={`mixer-container border-b border-zinc-900 bg-zinc-950/40 ${
+            isMixerCollapsed ? 'collapsed' : ''
+          }`}
         >
-          <DjMixer
-            trackA={loadedTrackA}
-            trackB={loadedTrackB}
-            onUpdateBpm={handleUpdateBpmInState}
-            onLoadTrack={handleLoadTrack}
-          />
+          <div className="min-h-0">
+            <DjMixer
+              trackA={loadedTrackA}
+              trackB={loadedTrackB}
+              onUpdateBpm={handleUpdateBpmInState}
+              onLoadTrack={handleLoadTrack}
+            />
+          </div>
         </div>
         {/* Toggle Button */}
         <button
           onClick={() => setIsMixerCollapsed(!isMixerCollapsed)}
-          className="absolute bottom-[-12px] left-1/2 -translate-x-1/2 z-30 flex h-6 w-12 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-100 hover:border-primary/55 transition-colors shadow-lg cursor-pointer"
-          title={isMixerCollapsed ? 'Mixer einblenden' : 'Mixer ausblenden'}
+          className={`absolute left-1/2 -translate-x-1/2 z-30 flex h-6 w-12 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-100 hover:border-primary/55 shadow-lg cursor-pointer transition-all duration-300 ${
+            isMixerCollapsed ? 'bottom-[-24px]' : 'bottom-[-12px]'
+          }`}
+          title={isMixerCollapsed ? t('mixer.show') : t('mixer.hide')}
         >
           <ChevronDown
             className={`h-4 w-4 transition-transform duration-300 ${isMixerCollapsed ? '' : 'rotate-180'}`}
@@ -78,10 +84,12 @@ export default function App(): React.JSX.Element {
           onSelectPlaylist={setSelectedPlaylistId}
           onDeletePlaylist={handleDeletePlaylist}
           onSyncPlaylist={handleSyncPlaylist}
+          onRenamePlaylist={handleRenamePlaylist}
           onOpenAddModal={() => setIsAddModalOpen(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
           activeSyncs={activeSyncs}
           width={sidebarWidth}
+          theme={settings.theme}
         />
 
         {/* Resizer Splitter */}
@@ -105,7 +113,7 @@ export default function App(): React.JSX.Element {
           />
         ) : (
           <div className="flex flex-1 items-center justify-center bg-zinc-900/10 text-zinc-500 text-sm">
-            Wähle eine Playlist aus oder füge eine neue hinzu, um Tracks anzuzeigen.
+            {t('app.selectPlaylistPrompt')}
           </div>
         )}
       </div>
@@ -126,5 +134,21 @@ export default function App(): React.JSX.Element {
         isSyncing={Object.keys(activeSyncs).length > 0}
       />
     </div>
+  )
+}
+
+export default function App(): React.JSX.Element {
+  const appState = useApp()
+  const { settings, handleUpdateSettings } = appState
+
+  return (
+    <LanguageProvider
+      language={settings.language || 'de'}
+      setLanguage={async (lang) => {
+        await handleUpdateSettings({ language: lang })
+      }}
+    >
+      <AppContent appState={appState} />
+    </LanguageProvider>
   )
 }

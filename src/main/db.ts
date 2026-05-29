@@ -31,6 +31,7 @@ export interface AppSettings {
   downloadPath: string
   sidebarWidth: number
   maxWorkers: number
+  language?: 'de' | 'en' | 'fr' | 'es'
 }
 
 interface DatabaseSchema {
@@ -50,7 +51,8 @@ let dbData: DatabaseSchema = {
     theme: 'dark',
     downloadPath: '',
     sidebarWidth: 256,
-    maxWorkers: 1
+    maxWorkers: 1,
+    language: 'de'
   }
 }
 
@@ -74,7 +76,8 @@ export function initDb(): void {
       theme: 'dark',
       downloadPath: defaultDownloadsDir,
       sidebarWidth: 256,
-      maxWorkers: 3
+      maxWorkers: 3,
+      language: 'de'
     }
     saveDb()
   } else {
@@ -91,13 +94,15 @@ export function initDb(): void {
           theme: 'dark',
           downloadPath: defaultDownloadsDir,
           sidebarWidth: 256,
-          maxWorkers: 3
+          maxWorkers: 3,
+          language: 'de'
         }
       } else {
         if (!dbData.settings.theme) dbData.settings.theme = 'dark'
         if (!dbData.settings.downloadPath) dbData.settings.downloadPath = defaultDownloadsDir
         if (!dbData.settings.sidebarWidth) dbData.settings.sidebarWidth = 256
         if (!dbData.settings.maxWorkers) dbData.settings.maxWorkers = 3
+        if (!dbData.settings.language) dbData.settings.language = 'de'
       }
 
       // Self-healing database: Ensure all tracks have filesize, format, rating, and bitrate
@@ -140,12 +145,22 @@ export function initDb(): void {
             dbUpdated = true
           }
 
-          // Ensure cover image is embedded in the MP3 file ID3 tags
+          // Ensure cover image and BPM are embedded in the MP3 file ID3 tags
           try {
             if (fs.existsSync(track.filepath)) {
               const nodeId3 = require('node-id3')
               const currentTags = nodeId3.read(track.filepath)
 
+              // 1. If BPM is in database but missing from ID3 tags, update the tag
+              if (track.bpm > 0 && currentTags && !currentTags.bpm) {
+                try {
+                  nodeId3.update({ bpm: track.bpm.toString() }, track.filepath)
+                } catch (bpmErr) {
+                  console.error(`Failed to update BPM ID3 tag for track ${track.id}:`, bpmErr)
+                }
+              }
+
+              // 2. If cover image is missing, write the whole set of tags
               if (!currentTags || !currentTags.image) {
                 if (fs.existsSync(track.coverPath)) {
                   const playlist = dbData.playlists.find((p) => p.id === track.playlistId)
@@ -154,7 +169,7 @@ export function initDb(): void {
                     title: track.title,
                     artist: track.artist,
                     album: albumName,
-                    tbpm: track.bpm > 0 ? track.bpm.toString() : undefined,
+                    bpm: track.bpm > 0 ? track.bpm.toString() : undefined,
                     popularimeter:
                       track.rating > 0
                         ? {
@@ -230,6 +245,14 @@ export function addPlaylist(playlist: Playlist): void {
   }
 }
 
+export function renamePlaylist(playlistId: string, newTitle: string): void {
+  const playlist = dbData.playlists.find((p) => p.id === playlistId)
+  if (playlist) {
+    playlist.title = newTitle
+    saveDb()
+  }
+}
+
 export function updatePlaylistStatus(
   playlistId: string,
   status: Playlist['syncStatus'],
@@ -289,7 +312,7 @@ export function updateTrackBpm(trackId: string, playlistId: string, bpm: number)
     try {
       const nodeId3 = require('node-id3')
       const tags = {
-        tbpm: bpm.toString()
+        bpm: bpm.toString()
       }
       nodeId3.update(tags, track.filepath)
     } catch (e) {
@@ -357,7 +380,8 @@ export function getSettings(): AppSettings {
       theme: 'dark',
       downloadPath: defaultDownloadsDir,
       sidebarWidth: 256,
-      maxWorkers: 3
+      maxWorkers: 3,
+      language: 'de'
     }
   )
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { X, Folder, FolderOpen, Sun, Moon, Loader2 } from 'lucide-react'
 import type { AppSettings } from '@main/db'
+import { useLanguage, type Language } from '../i18n'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -21,10 +22,11 @@ export default function SettingsModal({
 }: SettingsModalProps): React.JSX.Element | null {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const { t } = useLanguage()
 
   if (!isOpen) return null
 
-  const handleSelectFolder = async () => {
+  const handleSelectFolder = async (): Promise<void> => {
     setError('')
     try {
       const selectedPath = await window.api.selectDirectory()
@@ -38,28 +40,41 @@ export default function SettingsModal({
 
       const moveFiles = choice === 'move'
       await onMigrate(selectedPath, moveFiles)
-    } catch (e: any) {
-      setError(e.message || 'Fehler beim Ändern des Speicherorts.')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(msg || t('settings.errorChangePath'))
     } finally {
       setLoading(false)
     }
   }
 
-  const handleToggleTheme = async (theme: 'dark' | 'light') => {
+  const handleToggleTheme = async (theme: 'dark' | 'light'): Promise<void> => {
     if (theme === settings.theme) return
     try {
       await onUpdateSettings({ theme })
-    } catch (e: any) {
-      setError('Fehler beim Ändern des Themes.')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(msg || t('settings.errorChangeTheme'))
     }
   }
 
-  const handleUpdateWorkers = async (maxWorkers: number) => {
+  const handleUpdateWorkers = async (maxWorkers: number): Promise<void> => {
     if (maxWorkers === settings.maxWorkers) return
     try {
       await onUpdateSettings({ maxWorkers })
-    } catch (e: any) {
-      setError('Fehler beim Ändern der Worker-Anzahl.')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(msg || t('settings.errorChangeWorkers'))
+    }
+  }
+
+  const handleUpdateLanguage = async (language: Language): Promise<void> => {
+    if (language === settings.language) return
+    try {
+      await onUpdateSettings({ language })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(msg || t('settings.errorChangeLanguage'))
     }
   }
 
@@ -75,13 +90,15 @@ export default function SettingsModal({
         </button>
 
         <h2 className="mb-6 text-xl font-bold text-zinc-100 border-b border-zinc-900 pb-3">
-          Einstellungen
+          {t('settings.title')}
         </h2>
 
         <div className="space-y-6">
           {/* Theme Selector */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-zinc-400">Farbschema</label>
+            <label className="mb-2 block text-sm font-medium text-zinc-400">
+              {t('settings.theme')}
+            </label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -94,7 +111,7 @@ export default function SettingsModal({
                 }`}
               >
                 <Moon className="h-4 w-4" />
-                Dunkel
+                {t('settings.themeDark')}
               </button>
               <button
                 type="button"
@@ -107,15 +124,49 @@ export default function SettingsModal({
                 }`}
               >
                 <Sun className="h-4 w-4" />
-                Hell
+                {t('settings.themeLight')}
               </button>
+            </div>
+          </div>
+
+          {/* Language Selector */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-zinc-400">
+              {t('settings.languageLabel')}
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {(
+                [
+                  { code: 'de', name: 'Deutsch' },
+                  { code: 'en', name: 'English' },
+                  { code: 'fr', name: 'Français' },
+                  { code: 'es', name: 'Español' }
+                ] as const
+              ).map((lang) => (
+                <button
+                  key={lang.code}
+                  type="button"
+                  onClick={() => handleUpdateLanguage(lang.code)}
+                  disabled={loading}
+                  title={lang.name}
+                  className={`flex items-center justify-center rounded-lg py-2 text-xs font-bold border transition cursor-pointer ${
+                    (settings.language || 'de') === lang.code
+                      ? settings.theme === 'light'
+                        ? 'bg-amber-600 border-amber-600 text-white shadow shadow-amber-600/20'
+                        : 'bg-primary border-primary text-white shadow shadow-primary/20'
+                      : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                  }`}
+                >
+                  {lang.code.toUpperCase()}
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Download Path */}
           <div>
             <label className="mb-2 block text-sm font-medium text-zinc-400">
-              Speicherort der Playlisten
+              {t('settings.downloadPathLabel')}
             </label>
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
@@ -130,11 +181,11 @@ export default function SettingsModal({
                   type="button"
                   onClick={handleSelectFolder}
                   disabled={loading || isSyncing}
-                  className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-800 hover:text-white transition disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-800 hover:text-white transition disabled:opacity-50 cursor-pointer"
                   title={
                     isSyncing
-                      ? 'Speicherort kann während der Synchronisation nicht geändert werden'
-                      : 'Anderen Ordner auswählen'
+                      ? t('settings.downloadPathSyncingTooltip')
+                      : t('settings.downloadPathSelectTooltip')
                   }
                 >
                   {loading ? (
@@ -142,28 +193,25 @@ export default function SettingsModal({
                   ) : (
                     <Folder className="h-4 w-4 text-zinc-400" />
                   )}
-                  Wählen
+                  {t('settings.downloadPathSelect')}
                 </button>
                 <button
                   type="button"
                   onClick={() => window.api.openPath(settings.downloadPath)}
                   disabled={loading || !settings.downloadPath}
-                  className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-800 hover:text-white transition disabled:opacity-50"
-                  title="Ordner im Finder/Explorer öffnen"
+                  className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-800 hover:text-white transition disabled:opacity-50 cursor-pointer"
+                  title={t('settings.downloadPathOpenTooltip')}
                 >
                   <FolderOpen className="h-4 w-4 text-zinc-400" />
-                  Öffnen
+                  {t('settings.downloadPathOpen')}
                 </button>
               </div>
               {isSyncing ? (
                 <p className="text-[10px] text-amber-500 font-semibold bg-amber-500/10 border border-amber-500/20 rounded p-1.5 mt-0.5 animate-pulse">
-                  ⚠️ Der Speicherort kann während einer aktiven Synchronisation nicht geändert
-                  werden.
+                  {t('settings.downloadPathSyncingWarning')}
                 </p>
               ) : (
-                <p className="text-[10px] text-zinc-500">
-                  Hier werden alle MP3s und Coverbilder deiner YouTube-Playlists gespeichert.
-                </p>
+                <p className="text-[10px] text-zinc-500">{t('settings.downloadPathHelp')}</p>
               )}
             </div>
           </div>
@@ -171,7 +219,9 @@ export default function SettingsModal({
           {/* Concurrent Downloads / Workers Selector */}
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="text-sm font-medium text-zinc-400">Gleichzeitige Downloads</label>
+              <label className="text-sm font-medium text-zinc-400">
+                {t('settings.concurrentDownloads')}
+              </label>
               <span
                 className={`text-xs font-bold px-2 py-0.5 rounded border ${
                   settings.theme === 'light'
@@ -179,7 +229,7 @@ export default function SettingsModal({
                     : 'text-primary bg-primary/10 border-primary/20'
                 }`}
               >
-                {settings.maxWorkers || 3} Worker
+                {t('settings.workersCount', { count: settings.maxWorkers || 3 })}
               </span>
             </div>
             <div className="flex items-center gap-4">
@@ -197,8 +247,7 @@ export default function SettingsModal({
               />
             </div>
             <p className="mt-2 text-[10px] text-zinc-500">
-              Legt fest, wie viele Tracks einer Playliste gleichzeitig heruntergeladen werden (1 bis
-              12).
+              {t('settings.concurrentDownloadsHelp')}
             </p>
           </div>
 
@@ -213,9 +262,9 @@ export default function SettingsModal({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="rounded-lg bg-zinc-900 border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition disabled:opacity-50"
+              className="rounded-lg bg-zinc-900 border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition disabled:opacity-50 cursor-pointer"
             >
-              Schließen
+              {t('settings.close')}
             </button>
           </div>
         </div>

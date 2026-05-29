@@ -2,6 +2,7 @@ import React from 'react'
 import { Loader2, Music, Star } from 'lucide-react'
 import type { Track } from '@main/db'
 import { formatDuration, getMediaUrl } from '../utils/audio'
+import { useLanguage } from '../i18n'
 
 // Camelot wheel color – maps the number (1–12) to a hue on the color wheel
 function camelotColor(camelot: string): string {
@@ -32,6 +33,7 @@ export default function TrackRow({
   activeDownload,
   isScanningBpm
 }: TrackRowProps): React.JSX.Element {
+  const { t } = useLanguage()
   const coverUrl = track.coverPath ? getMediaUrl(track.coverPath) : ''
   const sizeInMB = track.filesize ? `${(track.filesize / (1024 * 1024)).toFixed(1)} MB` : '---'
   const isPlaceholder = !track.filepath
@@ -123,7 +125,7 @@ export default function TrackRow({
         ) : isPlaceholder ? (
           <span className="text-zinc-700 text-xs italic">-</span>
         ) : track.bpm === 0 ? (
-          <span className="text-zinc-600 text-xs italic">Warte...</span>
+          <span className="text-zinc-600 text-xs italic">{t('track.waiting')}</span>
         ) : (
           <span className="text-primary font-bold">{track.bpm}</span>
         )}
@@ -133,7 +135,7 @@ export default function TrackRow({
         {isPlaceholder ? (
           <span className="text-zinc-700 text-xs italic">-</span>
         ) : !track.key ? (
-          <span className="text-zinc-600 text-xs italic">Warte...</span>
+          <span className="text-zinc-600 text-xs italic">{t('track.waiting')}</span>
         ) : (
           <span
             className="inline-block px-2 py-0.5 rounded text-xs font-bold text-zinc-950"
@@ -149,10 +151,10 @@ export default function TrackRow({
         {isPlaceholder ? (
           activeDownload ? (
             <div className="flex items-center justify-center gap-1.5 text-xs text-primary font-semibold">
-              <span>Lade herunter ({activeDownload.percent}%)</span>
+              <span>{t('track.downloading', { percent: activeDownload.percent })}</span>
             </div>
           ) : (
-            <span className="text-zinc-600 text-xs italic">In Warteschlange...</span>
+            <span className="text-zinc-600 text-xs italic">{t('track.queued')}</span>
           )
         ) : (
           <>
@@ -178,7 +180,7 @@ export default function TrackRow({
               if (!isPlaceholder) onLoadTrack(track, 'A')
             }}
             disabled={isPlaceholder}
-            className={`rounded px-2.5 py-1 text-xs font-bold transition ${
+            className={`rounded px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
               isPlayingA
                 ? 'bg-primary text-white'
                 : isPlaceholder
@@ -194,7 +196,7 @@ export default function TrackRow({
               if (!isPlaceholder) onLoadTrack(track, 'B')
             }}
             disabled={isPlaceholder}
-            className={`rounded px-2.5 py-1 text-xs font-bold transition ${
+            className={`rounded px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
               isPlayingB
                 ? 'bg-purple-600 text-white'
                 : isPlaceholder

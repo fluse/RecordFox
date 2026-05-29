@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import type { Playlist, Track, AppSettings } from '@main/db'
+import { de } from '../i18n/locales/de'
+import { en } from '../i18n/locales/en'
+import { fr } from '../i18n/locales/fr'
+import { es } from '../i18n/locales/es'
+import type { TranslationKey } from '../i18n'
+
+const translations = { de, en, fr, es }
 
 export interface ActiveSync {
   status: string
@@ -23,6 +30,7 @@ export interface UseAppReturn {
   handleAddPlaylist: (url: string) => Promise<void>
   handleDeletePlaylist: (id: string) => Promise<void>
   handleSyncPlaylist: (id: string) => Promise<void>
+  handleRenamePlaylist: (id: string, newTitle: string) => Promise<void>
   handleLoadTrack: (track: Track, deck: 'A' | 'B') => void
   handleUpdateBpmInState: (trackId: string, bpm: number) => void
   handleUpdateKeyInState: (trackId: string, key: string) => void
@@ -46,10 +54,27 @@ export function useApp(): UseAppReturn {
     theme: 'dark',
     downloadPath: '',
     sidebarWidth: 256,
-    maxWorkers: 3
+    maxWorkers: 3,
+    language: 'de'
   })
   const [sidebarWidth, setSidebarWidth] = useState(256)
   const sidebarWidthRef = useRef<number>(sidebarWidth)
+
+  const t = useCallback(
+    (key: TranslationKey, params?: Record<string, string | number>): string => {
+      const lang = settings.language || 'de'
+      const langDict = translations[lang] || de
+      let text = langDict[key] || de[key] || String(key)
+
+      if (params) {
+        Object.entries(params).forEach(([paramKey, value]) => {
+          text = text.replace(new RegExp(`{{${paramKey}}}`, 'g'), String(value))
+        })
+      }
+      return text
+    },
+    [settings.language]
+  )
 
   useEffect((): void => {
     sidebarWidthRef.current = sidebarWidth
@@ -96,32 +121,48 @@ export function useApp(): UseAppReturn {
     }
   }, [])
 
-  const handleDeletePlaylist = useCallback(async (id: string): Promise<void> => {
-    if (
-      !confirm('Möchtest du diese Playlist und alle dazugehörigen lokalen MP3s wirklich löschen?')
-    ) {
-      return
-    }
+  const handleDeletePlaylist = useCallback(
+    async (id: string): Promise<void> => {
+      if (!confirm(t('actions.confirmDeletePlaylist'))) {
+        return
+      }
 
-    const res = await window.api.deletePlaylist(id)
-    if (res.success) {
-      setPlaylists((prev) => prev.filter((p) => p.id !== id))
-      setSelectedPlaylistId((prevSelected) => (prevSelected === id ? null : prevSelected))
+      const res = await window.api.deletePlaylist(id)
+      if (res.success) {
+        setPlaylists((prev) => prev.filter((p) => p.id !== id))
+        setSelectedPlaylistId((prevSelected) => (prevSelected === id ? null : prevSelected))
 
-      // Unload deleted tracks from DJ decks if active
-      setLoadedTrackA((prev) => (prev?.playlistId === id ? null : prev))
-      setLoadedTrackB((prev) => (prev?.playlistId === id ? null : prev))
-    } else {
-      alert(`Fehler beim Löschen: ${res.error}`)
-    }
-  }, [])
+        // Unload deleted tracks from DJ decks if active
+        setLoadedTrackA((prev) => (prev?.playlistId === id ? null : prev))
+        setLoadedTrackB((prev) => (prev?.playlistId === id ? null : prev))
+      } else {
+        alert(t('actions.errorDeletePlaylist', { error: res.error || '' }))
+      }
+    },
+    [t]
+  )
 
-  const handleSyncPlaylist = useCallback(async (id: string): Promise<void> => {
-    const res = await window.api.syncPlaylist(id)
-    if (!res.success) {
-      alert(`Fehler beim Synchronisieren: ${res.error}`)
-    }
-  }, [])
+  const handleSyncPlaylist = useCallback(
+    async (id: string): Promise<void> => {
+      const res = await window.api.syncPlaylist(id)
+      if (!res.success) {
+        alert(t('actions.errorSyncPlaylist', { error: res.error || '' }))
+      }
+    },
+    [t]
+  )
+
+  const handleRenamePlaylist = useCallback(
+    async (id: string, newTitle: string): Promise<void> => {
+      const res = await window.api.renamePlaylist(id, newTitle)
+      if (res.success) {
+        setPlaylists((prev) => prev.map((p) => (p.id === id ? { ...p, title: newTitle } : p)))
+      } else {
+        alert(t('actions.errorRenamePlaylist', { error: res.error || '' }))
+      }
+    },
+    [t]
+  )
 
   const handleUpdateSettings = useCallback(
     async (newSettings: Partial<AppSettings>): Promise<void> => {
@@ -130,37 +171,40 @@ export function useApp(): UseAppReturn {
         if (res.success) {
           setSettings((prev) => ({ ...prev, ...newSettings }))
         } else {
-          alert(`Fehler beim Aktualisieren der Einstellungen: ${res.error}`)
+          alert(t('actions.errorUpdateSettings', { error: res.error || '' }))
         }
       } catch (err) {
         console.error(err)
-        alert('Fehler beim Aktualisieren der Einstellungen.')
+        alert(t('actions.errorUpdateSettingsGeneral'))
       }
     },
-    []
+    [t]
   )
 
-  const handleMigrate = useCallback(async (newPath: string, moveFiles: boolean): Promise<void> => {
-    try {
-      const res = await window.api.migrateSettings(newPath, moveFiles)
-      if (res.success) {
-        setSettings((prev) => ({ ...prev, downloadPath: newPath }))
-        // Refresh tracks to get the updated local filepaths
-        setSelectedPlaylistId((currentPlaylistId) => {
-          if (currentPlaylistId) {
-            window.api.getTracks(currentPlaylistId).then(setTracks).catch(console.error)
-          }
-          return currentPlaylistId
-        })
-        alert('Speicherort erfolgreich geändert und Dateien ggf. verschoben!')
-      } else {
-        alert(`Fehler bei der Migration: ${res.error}`)
+  const handleMigrate = useCallback(
+    async (newPath: string, moveFiles: boolean): Promise<void> => {
+      try {
+        const res = await window.api.migrateSettings(newPath, moveFiles)
+        if (res.success) {
+          setSettings((prev) => ({ ...prev, downloadPath: newPath }))
+          // Refresh tracks to get the updated local filepaths
+          setSelectedPlaylistId((currentPlaylistId) => {
+            if (currentPlaylistId) {
+              window.api.getTracks(currentPlaylistId).then(setTracks).catch(console.error)
+            }
+            return currentPlaylistId
+          })
+          alert(t('actions.successMigrate'))
+        } else {
+          alert(t('actions.errorMigrate', { error: res.error || '' }))
+        }
+      } catch (err) {
+        console.error(err)
+        alert(t('actions.errorMigrateGeneral'))
       }
-    } catch (err) {
-      console.error(err)
-      alert('Fehler bei der Migration.')
-    }
-  }, [])
+    },
+    [t]
+  )
 
   const handleMouseDownSplitter = useCallback((e: React.MouseEvent): void => {
     e.preventDefault()
@@ -360,6 +404,7 @@ export function useApp(): UseAppReturn {
     handleAddPlaylist,
     handleDeletePlaylist,
     handleSyncPlaylist,
+    handleRenamePlaylist,
     handleLoadTrack,
     handleUpdateBpmInState,
     handleUpdateKeyInState,

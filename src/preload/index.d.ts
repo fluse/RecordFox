@@ -10,6 +10,10 @@ declare global {
       ) => Promise<{ success: boolean; playlist?: Playlist; error?: string }>
       deletePlaylist: (id: string) => Promise<{ success: boolean; error?: string }>
       syncPlaylist: (id: string) => Promise<{ success: boolean; error?: string }>
+      renamePlaylist: (
+        id: string,
+        newTitle: string
+      ) => Promise<{ success: boolean; error?: string }>
       getTracks: (playlistId: string) => Promise<Track[]>
       updateTrackBpm: (
         trackId: string,
@@ -61,6 +65,20 @@ declare global {
         playlistId: string,
         filepath: string
       ) => Promise<{ success: boolean; key?: string; error?: string }>
+      getUsbDrives: () => Promise<{ name: string; path: string }[]>
+      exportPlaylist: (
+        playlistId: string,
+        usbPath: string,
+        forceOverwrite?: boolean
+      ) => Promise<{ success: boolean; exists?: boolean; error?: string }>
+      onExportProgress: (
+        callback: (data: {
+          playlistId: string
+          current: number
+          total: number
+          trackTitle: string
+        }) => void
+      ) => () => void
       logError: (message: string) => void
     }
   }

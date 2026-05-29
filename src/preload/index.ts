@@ -6,6 +6,8 @@ const api = {
   addPlaylist: (url: string) => ipcRenderer.invoke('playlists:add', url),
   deletePlaylist: (id: string) => ipcRenderer.invoke('playlists:delete', id),
   syncPlaylist: (id: string) => ipcRenderer.invoke('playlists:sync', id),
+  renamePlaylist: (id: string, newTitle: string) =>
+    ipcRenderer.invoke('playlists:rename', id, newTitle),
 
   getTracks: (playlistId: string) => ipcRenderer.invoke('tracks:get', playlistId),
   updateTrackBpm: (trackId: string, playlistId: string, bpm: number) =>
@@ -76,6 +78,32 @@ const api = {
   // Trigger on-demand Key analysis for a single track
   analyzeTrackKey: (trackId: string, playlistId: string, filepath: string) =>
     ipcRenderer.invoke('tracks:analyze-key', trackId, playlistId, filepath),
+
+  getUsbDrives: () => ipcRenderer.invoke('usb:get-drives'),
+  exportPlaylist: (playlistId: string, usbPath: string, forceOverwrite?: boolean) =>
+    ipcRenderer.invoke('playlists:export', playlistId, usbPath, forceOverwrite),
+  onExportProgress: (
+    callback: (data: {
+      playlistId: string
+      current: number
+      total: number
+      trackTitle: string
+    }) => void
+  ): (() => void) => {
+    const subscription = (
+      _event: unknown,
+      data: {
+        playlistId: string
+        current: number
+        total: number
+        trackTitle: string
+      }
+    ): void => callback(data)
+    ipcRenderer.on('export-progress', subscription)
+    return (): void => {
+      ipcRenderer.removeListener('export-progress', subscription)
+    }
+  },
 
   logError: (message: string) => ipcRenderer.send('log-error', message)
 }

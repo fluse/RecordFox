@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react'
-import { Search, ArrowUpDown } from 'lucide-react'
+import { Search, ArrowUpDown, HardDrive } from 'lucide-react'
 import type { Track } from '@main/db'
+import { useLanguage } from '../i18n'
 import { useTrackScanner } from '../hooks/useTrackScanner'
 import TrackRow from './TrackRow'
+import UsbExportModal from './UsbExportModal'
 
 interface TracklistProps {
   playlistId: string
@@ -35,6 +37,8 @@ export default function Tracklist({
   const [search, setSearch] = useState('')
   const [sortField, setSortField] = useState<SortField>('title')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const { t } = useLanguage()
 
   // Hook for background scanning of missing BPMs/Keys
   const scanningBpm = useTrackScanner(tracks, playlistId, onUpdateBpm, onUpdateKey)
@@ -93,15 +97,25 @@ export default function Tracklist({
       {/* Header / Search */}
       <div className="flex h-16 items-center justify-between border-b border-zinc-900 px-6">
         <h1 className="text-lg font-bold text-zinc-200 truncate max-w-[300px]">{playlistTitle}</h1>
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1.5 h-4 w-4 text-zinc-500" />
-          <input
-            type="text"
-            placeholder="Suchen nach Titel, Interpret..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-full border border-zinc-800 bg-zinc-950 py-1.5 pl-9 pr-4 text-xs text-zinc-300 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-          />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={(): void => setIsExportModalOpen(true)}
+            className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-950 px-4 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-zinc-900 hover:text-zinc-100 hover:border-primary/55 cursor-pointer"
+          >
+            <HardDrive className="h-3.5 w-3.5" />
+            <span>{t('tracklist.usbExport')}</span>
+          </button>
+
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1.5 h-4 w-4 text-zinc-500" />
+            <input
+              type="text"
+              placeholder={t('tracklist.searchPlaceholder')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-full border border-zinc-800 bg-zinc-950 py-1.5 pl-9 pr-4 text-xs text-zinc-300 outline-none transition focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+            />
+          </div>
         </div>
       </div>
 
@@ -110,13 +124,13 @@ export default function Tracklist({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-zinc-800/80 text-xs font-semibold text-zinc-500">
-              <th className="py-3 w-16">Cover</th>
+              <th className="py-3 w-16">{t('tracklist.colCover')}</th>
               <th
                 className="py-3 cursor-pointer hover:text-zinc-300"
                 onClick={() => handleSort('title')}
               >
                 <div className="flex items-center gap-1.5">
-                  Titel / Interpret
+                  {t('tracklist.colTitle')}
                   <ArrowUpDown className="h-3.5 w-3.5" />
                 </div>
               </th>
@@ -125,7 +139,7 @@ export default function Tracklist({
                 onClick={() => handleSort('rating')}
               >
                 <div className="flex items-center justify-center gap-1.5">
-                  Rating
+                  {t('tracklist.colRating')}
                   <ArrowUpDown className="h-3.5 w-3.5" />
                 </div>
               </th>
@@ -134,7 +148,7 @@ export default function Tracklist({
                 onClick={() => handleSort('bpm')}
               >
                 <div className="flex items-center justify-center gap-1.5">
-                  BPM
+                  {t('tracklist.colBpm')}
                   <ArrowUpDown className="h-3.5 w-3.5" />
                 </div>
               </th>
@@ -143,7 +157,7 @@ export default function Tracklist({
                 onClick={() => handleSort('key')}
               >
                 <div className="flex items-center justify-center gap-1.5">
-                  Key
+                  {t('tracklist.colKey')}
                   <ArrowUpDown className="h-3.5 w-3.5" />
                 </div>
               </th>
@@ -152,7 +166,7 @@ export default function Tracklist({
                 onClick={() => handleSort('bitrate')}
               >
                 <div className="flex items-center justify-center gap-1.5">
-                  Format / Qualität
+                  {t('tracklist.colFormat')}
                   <ArrowUpDown className="h-3.5 w-3.5" />
                 </div>
               </th>
@@ -161,11 +175,11 @@ export default function Tracklist({
                 onClick={() => handleSort('duration')}
               >
                 <div className="flex items-center justify-end gap-1.5">
-                  Dauer
+                  {t('tracklist.colDuration')}
                   <ArrowUpDown className="h-3.5 w-3.5" />
                 </div>
               </th>
-              <th className="py-3 w-40 text-center">In Deck laden</th>
+              <th className="py-3 w-40 text-center">{t('tracklist.colLoadDeck')}</th>
             </tr>
           </thead>
           <tbody className="text-sm divide-y divide-zinc-900/50">
@@ -185,13 +199,19 @@ export default function Tracklist({
             {filteredAndSortedTracks.length === 0 && (
               <tr>
                 <td colSpan={8} className="py-8 text-center text-zinc-600 text-sm">
-                  Keine Tracks gefunden
+                  {t('tracklist.noTracksFound')}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+      <UsbExportModal
+        isOpen={isExportModalOpen}
+        onClose={(): void => setIsExportModalOpen(false)}
+        playlistId={playlistId}
+        playlistTitle={playlistTitle}
+      />
     </div>
   )
 }

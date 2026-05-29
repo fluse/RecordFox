@@ -11,7 +11,9 @@ import {
   getCoversDir,
   getTracksForPlaylist,
   updateTrackBpm,
-  updateTrackKey
+  updateTrackKey,
+  getSettings,
+  getPlaylists
 } from './db'
 import { getPlaylistInfo, downloadTrack } from './downloader'
 import { analyzeBpm } from './bpm'
@@ -161,7 +163,6 @@ export async function syncPlaylist(playlist: Playlist, win: BrowserWindow): Prom
     }
 
     // 2. Download new tracks using concurrent workers based on settings
-    const { getSettings } = require('./db')
     const settings = getSettings()
     const maxWorkers = settings.maxWorkers || 1
 
@@ -335,7 +336,6 @@ export function startBackgroundSync(win: BrowserWindow, intervalMs = 30 * 60 * 1
   if (syncInterval) clearInterval(syncInterval)
 
   syncInterval = setInterval(() => {
-    const { getPlaylists } = require('./db')
     const playlists = getPlaylists()
     for (const playlist of playlists) {
       syncPlaylist(playlist, win).catch((err) => console.error(err))
