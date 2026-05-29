@@ -1,0 +1,250 @@
+@import "tailwindcss";
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 263.4 70% 50.4%;
+    /* Purple */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 263.4 70% 50.4%;
+
+    --radius: 0.5rem;
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 263.4 70% 50.4%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 263.4 70% 50.4%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+    overflow-x: hidden;
+  }
+}
+
+/* Light mode overrides for Tailwind utility colors */
+.light body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.light .bg-zinc-950 {
+  background-color: #ffffff !important;
+}
+
+.light .bg-zinc-900 {
+  background-color: #f4f4f5 !important;
+}
+
+.light .bg-zinc-950\/40 {
+  background-color: rgba(244, 244, 245, 0.4) !important;
+}
+
+.light .bg-zinc-950\/80 {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.light .bg-zinc-900\/40 {
+  background-color: rgba(244, 244, 245, 0.4) !important;
+}
+
+.light .bg-zinc-900\/50 {
+  background-color: rgba(244, 244, 245, 0.5) !important;
+}
+
+.light .bg-zinc-900\/60 {
+  background-color: rgba(244, 244, 245, 0.6) !important;
+}
+
+.light .bg-zinc-900\/10 {
+  background-color: rgba(244, 244, 245, 0.1) !important;
+}
+
+.light .text-zinc-100 {
+  color: #18181b !important;
+}
+
+.light .text-zinc-200 {
+  color: #27272a !important;
+}
+
+.light .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+
+.light .text-zinc-400 {
+  color: #71717a !important;
+}
+
+.light .text-zinc-500 {
+  color: #a1a1aa !important;
+}
+
+.light .text-zinc-600 {
+  color: #71717a !important;
+}
+
+.light .border-zinc-900 {
+  border-color: #e4e4e7 !important;
+}
+
+.light .border-zinc-800 {
+  border-color: #e4e4e7 !important;
+}
+
+.light .border-zinc-800\/80 {
+  border-color: rgba(228, 228, 231, 0.8) !important;
+}
+
+.light .hover\:bg-zinc-900\/30:hover {
+  background-color: rgba(244, 244, 245, 0.3) !important;
+}
+
+.light .hover\:bg-zinc-900\/50:hover {
+  background-color: rgba(244, 244, 245, 0.5) !important;
+}
+
+.light .hover\:bg-zinc-900:hover {
+  background-color: #f4f4f5 !important;
+}
+
+.light .hover\:bg-zinc-800:hover {
+  background-color: #e4e4e7 !important;
+}
+
+.light .bg-zinc-800 {
+  background-color: #e4e4e7 !important;
+}
+
+.light .bg-zinc-800\/60 {
+  background-color: rgba(228, 228, 231, 0.6) !important;
+}
+
+.light .bg-zinc-950\/20 {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.light input[type="text"],
+.light input[type="url"] {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border-color: #d4d4d8 !important;
+}
+
+.light .bg-gradient-to-b.from-zinc-900.to-zinc-950 {
+  background: linear-gradient(to bottom, #f4f4f5, #e4e4e7) !important;
+}
+
+.light .bg-zinc-900.border.border-zinc-950 {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+
+.light .text-primary {
+  color: #7c3aed !important;
+  /* purple-600 */
+}
+
+/* Base transitions for smooth theme switching */
+body,
+div,
+tr,
+td,
+th,
+button,
+input,
+h1,
+h2,
+span,
+p {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
