@@ -1,4 +1,4 @@
-name: Build and Release RecordFox
+name: Build and Release RekordFox
 
 # Der Workflow startet automatisch, wenn du einen neuen Tag pushst (z.B. v1.0.0)
 on:
@@ -25,11 +25,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
 
       - name: Install Dependencies
-        run: npm ci # Nutze npm ci für saubere, reproduzierbare Installationen (setzt eine package-lock.json voraus)
-        # Falls du yarn oder pnpm nutzt, tausche diesen Befehl entsprechend aus (z.B. yarn install)
+        run: npm ci
+
+      # ---> DIESER SCHRITT WAR FEHLEND <---
+      - name: Build Application
+        run: npm run build
+        # Falls dein Build-Befehl in der package.json anders heißt (z.B. npm run build:electron), 
+        # musst du das hier entsprechend anpassen.
 
       - name: Build & Publish to GitHub Releases
         env:
