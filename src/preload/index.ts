@@ -14,6 +14,8 @@ const api = {
     ipcRenderer.invoke('tracks:update-bpm', trackId, playlistId, bpm),
   updateTrackRating: (trackId: string, playlistId: string, rating: number) =>
     ipcRenderer.invoke('tracks:update-rating', trackId, playlistId, rating),
+  reorderTracks: (playlistId: string, trackIds: string[]) =>
+    ipcRenderer.invoke('tracks:reorder', playlistId, trackIds),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   updateSettings: (settings: any) => ipcRenderer.invoke('settings:update', settings),
   migrateSettings: (newPath: string, moveFiles: boolean) =>

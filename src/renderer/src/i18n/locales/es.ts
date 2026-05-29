@@ -70,6 +70,7 @@ export const es = {
   // Tracklist
   'tracklist.usbExport': 'Exportar USB',
   'tracklist.searchPlaceholder': 'Buscar por título, artista...',
+  'tracklist.colPosition': '#',
   'tracklist.colCover': 'Portada',
   'tracklist.colTitle': 'Título / Artista',
   'tracklist.colRating': 'Rating',
@@ -79,6 +80,7 @@ export const es = {
   'tracklist.colDuration': 'Duración',
   'tracklist.colLoadDeck': 'Cargar en Deck',
   'tracklist.noTracksFound': 'No se encontraron temas',
+  'tracklist.customizeColumns': 'Personalizar columnas',
 
   // USB Export Modal
   'usbExport.title': 'Exportar USB',
@@ -114,6 +116,7 @@ export const es = {
     '¿Realmente quieres borrar esta lista de reproducción y todos los archivos MP3 locales asociados?',
   'actions.errorDeletePlaylist': 'Error al borrar: {{error}}',
   'actions.errorRenamePlaylist': 'Error al renombrar la lista de reproducción: {{error}}',
+  'actions.errorReorderTracks': 'Error al reordenar las pistas: {{error}}',
   'actions.errorSyncPlaylist': 'Error al sincronizar: {{error}}',
   'actions.errorUpdateSettings': 'Error al actualizar los ajustes: {{error}}',
   'actions.errorUpdateSettingsGeneral': 'Error al actualizar los ajustes.',

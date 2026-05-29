@@ -18,6 +18,7 @@ import {
   updateSettings,
   migrateDownloadsFolder,
   renamePlaylist,
+  updateTrackPositions,
   Playlist,
   AppSettings
 } from './db'
@@ -30,7 +31,15 @@ import { exportPlaylistToUsb } from './exporter'
 
 // Register custom media protocol to serve local MP3 files securely and support audio streaming/seeking
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'media', privileges: { bypassCSP: true, stream: true, corsEnabled: true } }
+  {
+    scheme: 'media',
+    privileges: {
+      bypassCSP: true,
+      stream: true,
+      corsEnabled: true,
+      supportFetchAPI: true
+    }
+  }
 ])
 
 let mainWindow: BrowserWindow | null = null
@@ -78,14 +87,22 @@ app.whenReady().then(async () => {
   // Register custom media protocol
   protocol.handle('media', (request) => {
     try {
-      const url = new URL(request.url)
-      let filePath = decodeURIComponent(url.pathname)
+      console.log('[Media Protocol] Raw request.url:', request.url)
+      const prefix = 'media://'
+      let filePath = request.url
+      if (filePath.toLowerCase().startsWith(prefix)) {
+        filePath = filePath.slice(prefix.length)
+      }
+      filePath = decodeURIComponent(filePath)
+      console.log('[Media Protocol] Decoded path:', filePath)
       if (process.platform === 'win32' && filePath.startsWith('/')) {
         filePath = filePath.slice(1)
       }
-      return net.fetch(pathToFileURL(filePath).toString())
+      const finalUrl = pathToFileURL(filePath).toString()
+      console.log('[Media Protocol] Final file URL:', finalUrl)
+      return net.fetch(finalUrl)
     } catch (err) {
-      console.error('Failed to handle media protocol request:', err)
+      console.error('[Media Protocol] Failed to handle request:', err)
       return new Response('File not found', { status: 404 })
     }
   })
@@ -214,6 +231,15 @@ app.whenReady().then(async () => {
       }
     }
   )
+
+  ipcMain.handle('tracks:reorder', (_, playlistId: string, trackIds: string[]) => {
+    try {
+      updateTrackPositions(playlistId, trackIds)
+      return { success: true }
+    } catch (e: any) {
+      return { success: false, error: e.message }
+    }
+  })
 
   ipcMain.handle('settings:get', () => {
     return getSettings()

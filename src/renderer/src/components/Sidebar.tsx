@@ -71,7 +71,7 @@ export default function Sidebar({
   }
   return (
     <div
-      className="flex h-full flex-col border-r border-zinc-900 bg-zinc-950/80 backdrop-blur-md"
+      className="flex h-full flex-col bg-zinc-950/80 backdrop-blur-md"
       style={{ width: width ? `${width}px` : '256px', minWidth: width ? `${width}px` : '256px' }}
     >
       <div className="flex h-16 items-center justify-between border-b border-zinc-900 px-6">
@@ -81,9 +81,7 @@ export default function Sidebar({
             className="h-13 w-13 object-contain"
             alt="RecordFox"
           />
-          <span className="bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-            RecordFox
-          </span>
+          <span className="text-2xl font-semibold">RecordFox</span>
         </div>
       </div>
 
@@ -109,11 +107,10 @@ export default function Sidebar({
               <div
                 key={playlist.id}
                 onClick={() => onSelectPlaylist(playlist.id)}
-                className={`group relative flex flex-col rounded-lg px-3 py-2.5 transition cursor-pointer ${
-                  isSelected
-                    ? 'bg-zinc-900 text-zinc-100'
-                    : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200'
-                }`}
+                className={`group relative flex flex-col rounded-lg px-3 py-2.5 transition cursor-pointer ${isSelected
+                  ? 'bg-zinc-900 text-zinc-100'
+                  : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200'
+                  }`}
               >
                 <div className="flex items-center justify-between w-full">
                   {editingPlaylistId === playlist.id ? (
@@ -184,7 +181,7 @@ export default function Sidebar({
                                       0
                                     )) /
                                     syncState.total) *
-                                    100
+                                  100
                                 )
                               )}%`
                             }}

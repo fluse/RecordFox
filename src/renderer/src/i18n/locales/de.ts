@@ -70,6 +70,7 @@ export const de = {
   // Tracklist
   'tracklist.usbExport': 'USB Export',
   'tracklist.searchPlaceholder': 'Suchen nach Titel, Interpret...',
+  'tracklist.colPosition': '#',
   'tracklist.colCover': 'Cover',
   'tracklist.colTitle': 'Titel / Interpret',
   'tracklist.colRating': 'Rating',
@@ -79,6 +80,7 @@ export const de = {
   'tracklist.colDuration': 'Dauer',
   'tracklist.colLoadDeck': 'In Deck laden',
   'tracklist.noTracksFound': 'Keine Tracks gefunden',
+  'tracklist.customizeColumns': 'Spalten anpassen',
 
   // USB Export Modal
   'usbExport.title': 'USB-Export',
@@ -113,6 +115,7 @@ export const de = {
     'Möchtest du diese Playlist und alle dazugehörigen lokalen MP3s wirklich löschen?',
   'actions.errorDeletePlaylist': 'Fehler beim Löschen: {{error}}',
   'actions.errorRenamePlaylist': 'Fehler beim Umbenennen der Playlist: {{error}}',
+  'actions.errorReorderTracks': 'Fehler beim Sortieren der Tracks: {{error}}',
   'actions.errorSyncPlaylist': 'Fehler beim Synchronisieren: {{error}}',
   'actions.errorUpdateSettings': 'Fehler beim Aktualisieren der Einstellungen: {{error}}',
   'actions.errorUpdateSettingsGeneral': 'Fehler beim Aktualisieren der Einstellungen.',

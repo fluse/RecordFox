@@ -36,6 +36,7 @@ function AppContent({ appState }: { appState: UseAppReturn }): React.JSX.Element
     handleUpdateBpmInState,
     handleUpdateKeyInState,
     handleUpdateRatingInState,
+    handleReorderTracks,
     handleUpdateSettings,
     handleMigrate,
     handleMouseDownSplitter
@@ -95,8 +96,11 @@ function AppContent({ appState }: { appState: UseAppReturn }): React.JSX.Element
         {/* Resizer Splitter */}
         <div
           onMouseDown={handleMouseDownSplitter}
-          className="w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary bg-zinc-900 transition-colors h-full select-none"
-        />
+          className="relative w-[1px] bg-zinc-800 cursor-col-resize h-full select-none z-10 transition-colors duration-150 hover:bg-primary active:bg-primary group"
+        >
+          {/* Expanded interactive area */}
+          <div className="absolute inset-y-0 -left-2 -right-2" />
+        </div>
 
         {selectedPlaylistId && selectedPlaylist ? (
           <Tracklist
@@ -107,6 +111,7 @@ function AppContent({ appState }: { appState: UseAppReturn }): React.JSX.Element
             onUpdateBpm={handleUpdateBpmInState}
             onUpdateKey={handleUpdateKeyInState}
             onUpdateRating={handleUpdateRatingInState}
+            onReorderTracks={handleReorderTracks}
             currentTrackA={loadedTrackA}
             currentTrackB={loadedTrackB}
             activeDownloads={activeSyncs[selectedPlaylistId]?.activeDownloads}

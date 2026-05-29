@@ -25,6 +25,10 @@ declare global {
         playlistId: string,
         rating: number
       ) => Promise<{ success: boolean; error?: string }>
+      reorderTracks: (
+        playlistId: string,
+        trackIds: string[]
+      ) => Promise<{ success: boolean; error?: string }>
       getSettings: () => Promise<AppSettings>
       updateSettings: (
         settings: Partial<AppSettings>

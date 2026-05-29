@@ -36,6 +36,13 @@ export default function Deck({
 }: DeckProps): React.JSX.Element {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const isScrubbingRef = useRef(false)
+  const isCueHeldRef = useRef(false)
+  const wasPlayingBeforeCueRef = useRef(false)
+  // Tracks the last CSS-pixel X position for relative jog-wheel scrubbing
+  const scrubLastXRef = useRef<number | null>(null)
+  // Whether the current scrub started on the scrolling (jog) zone vs. overview zone
+  const scrubIsJogRef = useRef(false)
   const { t } = useLanguage()
 
   // Web Audio Nodes refs
@@ -67,7 +74,12 @@ export default function Deck({
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
+    const allowed = e.dataTransfer.effectAllowed
+    if (allowed === 'move' || allowed === 'copyMove' || allowed === 'all') {
+      e.dataTransfer.dropEffect = 'move'
+    } else {
+      e.dataTransfer.dropEffect = 'copy'
+    }
     setIsDragOver(true)
   }
 
@@ -97,6 +109,11 @@ export default function Deck({
 
     const audio = new Audio()
     audio.crossOrigin = 'anonymous'
+    // Pre-allocate a generous decode buffer so slow playback rates (pitch down)
+    // never starve the decoder – avoids buffer underruns / glitch artefacts.
+    audio.preload = 'auto'
+    // Default to key-lock on (preserves pitch while changing tempo)
+    audio.preservesPitch = true
     audioRef.current = audio
 
     // Create Nodes
@@ -242,9 +259,12 @@ export default function Deck({
         const response = await fetch(url)
         const arrayBuffer = await response.arrayBuffer()
 
-        // Decode offscreen
-        const offlineContext = new OfflineAudioContext(1, 44100 * 30, 44100) // decode up to first 30 seconds for detail, or more
-        const audioBuffer = await offlineContext.decodeAudioData(arrayBuffer)
+        // Decode the full track audio buffer for accurate waveform peaks across the whole track.
+        // We use decodeAudioData directly (no OfflineAudioContext render needed) since we only
+        // need the raw PCM channel data, not a rendered output.
+        const tempCtx = new AudioContext()
+        const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer)
+        tempCtx.close()
 
         const channelData = audioBuffer.getChannelData(0)
         const step = Math.ceil(channelData.length / 500) // 500 bars
@@ -283,36 +303,46 @@ export default function Deck({
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       const width = canvas.width
-      const height = canvas.height
-      const centerY = height / 2
 
-      // Draw Grid / Center Playhead Line
+      // Layout dimensions:
+      // Scrolling waveform height: 56px
+      // Gap: 8px
+      // Overview waveform height: 16px
+      const scrollHeight = 56
+      const scrollCenterY = scrollHeight / 2
+
+      const overviewY = 64
+      const overviewHeight = 16
+      const overviewCenterY = overviewY + overviewHeight / 2
+
+      // 1. Draw Scrolling Waveform Grid / Center Playhead Line
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
       ctx.beginPath()
       ctx.moveTo(width / 2, 0)
-      ctx.lineTo(width / 2, height)
+      ctx.lineTo(width / 2, scrollHeight)
       ctx.stroke()
 
-      if (peaks.length > 0 && duration > 0) {
-        // Calculate index of peaks corresponding to currentTime
-        const progress = currentTime / duration
-        const centerIndex = Math.floor(progress * peaks.length)
+      const currentPlayTime = audioRef.current ? audioRef.current.currentTime : currentTime
+      const progress = duration > 0 ? currentPlayTime / duration : 0
 
-        // Waveform zoom / width in terms of peak index span (say, view 80 peaks on screen)
+      if (peaks.length > 0 && duration > 0) {
+        // Draw Scrolling Waveform
+        const centerIndex = progress * peaks.length // float representation
         const span = 80
         const start = centerIndex - span / 2
         const end = centerIndex + span / 2
 
+        const firstVisible = Math.max(0, Math.floor(start))
+        const lastVisible = Math.min(peaks.length - 1, Math.ceil(end))
+
         ctx.lineWidth = 3
         ctx.lineCap = 'round'
 
-        for (let i = start; i < end; i++) {
+        for (let i = firstVisible; i <= lastVisible; i++) {
+          // x is float value for sub-pixel accuracy
           const x = ((i - start) / span) * width
 
-          let peakValue = 0
-          if (i >= 0 && i < peaks.length) {
-            peakValue = peaks[i]
-          }
+          const peakValue = peaks[i] || 0
 
           // Dynamic coloring: active color for past track, gray for future track
           if (i < centerIndex) {
@@ -321,50 +351,117 @@ export default function Deck({
             ctx.strokeStyle = '#3f3f46' // zinc-700
           }
 
-          const h = peakValue * height * 0.95
+          const h = peakValue * scrollHeight * 0.95
           ctx.beginPath()
-          ctx.moveTo(x, centerY - h / 2)
-          ctx.lineTo(x, centerY + h / 2)
+          ctx.moveTo(x, scrollCenterY - h / 2)
+          ctx.lineTo(x, scrollCenterY + h / 2)
           ctx.stroke()
         }
 
-        // Render Loop markers
-        if (loopStart !== null && duration > 0) {
+        // Draw Loop markers on Scrolling Waveform
+        if (loopStart !== null) {
           const startProgress = loopStart / duration
-          const startIdx = Math.floor(startProgress * peaks.length)
+          const startIdx = startProgress * peaks.length
           const startX = ((startIdx - start) / span) * width
 
-          ctx.fillStyle = 'rgba(168, 85, 247, 0.2)' // purple overlay
+          ctx.fillStyle = 'rgba(168, 85, 247, 0.15)' // purple overlay
 
           if (loopEnd !== null) {
             const endProgress = loopEnd / duration
-            const endIdx = Math.floor(endProgress * peaks.length)
+            const endIdx = endProgress * peaks.length
             const endX = ((endIdx - start) / span) * width
 
-            ctx.fillRect(startX, 0, endX - startX, height)
+            ctx.fillRect(startX, 0, endX - startX, scrollHeight)
             ctx.strokeStyle = '#d8b4fe' // purple-300
             ctx.lineWidth = 1.5
             ctx.beginPath()
             ctx.moveTo(startX, 0)
-            ctx.lineTo(startX, height)
+            ctx.lineTo(startX, scrollHeight)
             ctx.moveTo(endX, 0)
-            ctx.lineTo(endX, height)
+            ctx.lineTo(endX, scrollHeight)
             ctx.stroke()
           }
+        }
+
+        // Draw Cue Point marker on Scrolling Waveform
+        if (cueTime !== null) {
+          const cueProgress = cueTime / duration
+          const cueIdx = cueProgress * peaks.length
+          const cueX = ((cueIdx - start) / span) * width
+          if (cueX >= 0 && cueX <= width) {
+            ctx.strokeStyle = '#22c55e' // green-500
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.moveTo(cueX, 0)
+            ctx.lineTo(cueX, scrollHeight)
+            ctx.stroke()
+            // Small triangle flag at the top
+            ctx.fillStyle = '#22c55e'
+            ctx.beginPath()
+            ctx.moveTo(cueX, 0)
+            ctx.lineTo(cueX + 7, 0)
+            ctx.lineTo(cueX, 10)
+            ctx.closePath()
+            ctx.fill()
+          }
+        }
+
+        // 2. Draw Overview Waveform Bar Background
+        ctx.fillStyle = 'rgba(24, 24, 27, 0.6)' // zinc-900/60
+        ctx.fillRect(0, overviewY, width, overviewHeight)
+
+        // Draw Overview Waveform Peaks (Full Track)
+        ctx.lineWidth = 1.5
+        ctx.lineCap = 'butt'
+
+        for (let x = 0; x < width; x += 2) {
+          const peakIdx = Math.floor((x / width) * peaks.length)
+          const peakValue = peaks[peakIdx] || 0
+          const h = peakValue * (overviewHeight - 4)
+
+          if (x < progress * width) {
+            ctx.strokeStyle = activeColor === '#a855f7' ? '#c084fc' : '#a855f7'
+          } else {
+            ctx.strokeStyle = '#52525b' // zinc-600
+          }
+
+          ctx.beginPath()
+          ctx.moveTo(x, overviewCenterY - h / 2)
+          ctx.lineTo(x, overviewCenterY + h / 2)
+          ctx.stroke()
+        }
+
+        // Draw Overview Playhead (vertical red line)
+        ctx.strokeStyle = '#ef4444' // red-500
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(progress * width, overviewY)
+        ctx.lineTo(progress * width, overviewY + overviewHeight)
+        ctx.stroke()
+
+        // Draw Cue Point marker on Overview Waveform
+        if (cueTime !== null) {
+          const cueX = (cueTime / duration) * width
+          ctx.strokeStyle = '#22c55e' // green-500
+          ctx.lineWidth = 1.5
+          ctx.beginPath()
+          ctx.moveTo(cueX, overviewY)
+          ctx.lineTo(cueX, overviewY + overviewHeight)
+          ctx.stroke()
         }
       } else {
         // Flat line if no track or decoding
         ctx.strokeStyle = '#27272a'
         ctx.lineWidth = 2
         ctx.beginPath()
-        ctx.moveTo(0, centerY)
-        ctx.lineTo(width, centerY)
+        ctx.moveTo(0, scrollCenterY)
+        ctx.lineTo(width, scrollCenterY)
         ctx.stroke()
 
         if (decoding) {
           ctx.fillStyle = '#a1a1aa'
           ctx.font = '10px sans-serif'
-          ctx.fillText(t('deck.loadingWaveform'), 12, centerY - 8)
+          ctx.fillText(t('deck.loadingWaveform'), 12, scrollCenterY - 8)
         }
       }
 
@@ -376,7 +473,88 @@ export default function Deck({
     return () => {
       cancelAnimationFrame(animationFrameId)
     }
-  }, [peaks, currentTime, duration, decoding, loopStart, loopEnd])
+  }, [peaks, duration, decoding, loopStart, loopEnd, cueTime])
+
+  // ── Waveform Scrubbing / Seeking ─────────────────────────────────────────────
+  //
+  // Overview waveform (bottom 25 % of canvas height): absolute seek to clicked position.
+  //
+  // Scrolling waveform (top 75 %, jog zone): CDJ-style relative scrub.
+  //   The visible span covers `span` peaks across the canvas width.
+  //   Each pixel of horizontal drag moves the playhead by:
+  //     Δt = (span / canvas.width) × (duration / peaks.length)
+  //   Dragging right → forward, dragging left → backward.
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return
+
+    const canvas = canvasRef.current
+    if (!canvas || !audioRef.current || !track || duration <= 0 || peaks.length === 0) return
+
+    const rect = canvas.getBoundingClientRect()
+    const scaleY = canvas.height / rect.height
+    const y = (e.clientY - rect.top) * scaleY
+    const isOverview = y > canvas.height * 0.75
+
+    isScrubbingRef.current = true
+    scrubIsJogRef.current = !isOverview
+    scrubLastXRef.current = e.clientX
+
+    if (isOverview) {
+      // Absolute seek on overview strip
+      const scaleX = canvas.width / rect.width
+      const x = (e.clientX - rect.left) * scaleX
+      let newTime = (x / canvas.width) * duration
+      newTime = Math.max(0, Math.min(duration, newTime))
+      audioRef.current.currentTime = newTime
+      setCurrentTime(newTime)
+    }
+    // No jump on jog zone mousedown – movement drives the scrub
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isScrubbingRef.current || !audioRef.current || !track || duration <= 0 || peaks.length === 0) return
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const prevX = scrubLastXRef.current
+    if (prevX === null) {
+      scrubLastXRef.current = e.clientX
+      return
+    }
+
+    const deltaCSS = e.clientX - prevX // positive = dragged right = forward
+    scrubLastXRef.current = e.clientX
+
+    if (scrubIsJogRef.current) {
+      // Jog-wheel relative scrub: map CSS-pixel delta → time delta
+      const rect = canvas.getBoundingClientRect()
+      const scaleX = canvas.width / rect.width
+      const deltaPx = deltaCSS * scaleX // in canvas pixels
+      const span = 80 // peaks visible in scrolling view
+      const secondsPerPeak = duration / peaks.length
+      const deltaTime = (deltaPx / canvas.width) * span * secondsPerPeak
+      let newTime = audioRef.current.currentTime + deltaTime
+      newTime = Math.max(0, Math.min(duration, newTime))
+      audioRef.current.currentTime = newTime
+      setCurrentTime(newTime)
+    } else {
+      // Overview: keep absolute seek while dragging
+      const rect = canvas.getBoundingClientRect()
+      const scaleX = canvas.width / rect.width
+      const x = (e.clientX - rect.left) * scaleX
+      let newTime = (x / canvas.width) * duration
+      newTime = Math.max(0, Math.min(duration, newTime))
+      audioRef.current.currentTime = newTime
+      setCurrentTime(newTime)
+    }
+  }
+
+  const handleMouseUpOrLeave = () => {
+    isScrubbingRef.current = false
+    scrubLastXRef.current = null
+  }
 
   // Play / Pause
   const togglePlay = async () => {
@@ -395,15 +573,35 @@ export default function Deck({
   }
 
   // Cue Button Logic
-  // Pressing Cue goes back to cuePoint and pauses.
-  // Holding Cue (not fully simulated in click, but clicking acts as instantaneous cue jumping)
-  const handleCue = () => {
-    if (!audioRef.current || !track) return
-    if (cueTime !== null) {
-      audioRef.current.currentTime = cueTime
-      audioRef.current.pause()
-      setIsPlaying(false)
+  // Hold: jump to cue point and play while button is held.
+  // Release: stop playback and return to cue point (classic CDJ behaviour).
+  const handleCueMouseDown = async () => {
+    if (!audioRef.current || !track || cueTime === null) return
+
+    // Resume AudioContext if suspended
+    if (audioContext && audioContext.state === 'suspended') {
+      await audioContext.resume()
     }
+
+    wasPlayingBeforeCueRef.current = isPlaying
+    isCueHeldRef.current = true
+
+    // Jump to cue point and start playing
+    audioRef.current.currentTime = cueTime
+    audioRef.current.play().catch((e) => console.error(e))
+  }
+
+  const handleCueMouseUp = () => {
+    if (!audioRef.current || !track || cueTime === null) return
+    if (!isCueHeldRef.current) return
+
+    isCueHeldRef.current = false
+
+    // Stop playback and snap back to cue point
+    audioRef.current.pause()
+    audioRef.current.currentTime = cueTime
+    setIsPlaying(false)
+    setCurrentTime(cueTime)
   }
 
   const setCuePoint = () => {
@@ -412,15 +610,43 @@ export default function Deck({
   }
 
   // Pitch (Playback Rate) Adjustment
+  // We ramp the playbackRate smoothly via the Web Audio clock instead of
+  // assigning it instantly. An abrupt playbackRate change forces the browser's
+  // time-stretcher to restart its internal buffer, which produces the audible
+  // click / stutter (buffer underrun) that is especially noticeable when
+  // pitching down (slow playback). A 40 ms linear ramp gives the decoder time
+  // to refill without any perceptible latency from the user's perspective.
   const handlePitchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const p = parseFloat(e.target.value)
     setPitch(p)
-    if (audioRef.current) {
+    if (audioRef.current && audioContext) {
+      // Ramp over 40 ms to avoid the decoder starvation that causes glitches
+      const now = audioContext.currentTime
+      // HTMLMediaElement.playbackRate is not an AudioParam, so we cannot call
+      // linearRampToValueAtTime on it directly. Instead we schedule a small
+      // stepped ramp via a tiny recursive timeout – cheap and effective.
+      const startRate = audioRef.current.playbackRate
+      const endRate = p
+      const steps = 8
+      const stepMs = 40 / steps
+      for (let i = 1; i <= steps; i++) {
+        const frac = i / steps
+        const rate = startRate + (endRate - startRate) * frac
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.playbackRate = rate
+          }
+        }, Math.round(stepMs * i))
+      }
+      void now // suppress unused-variable lint
+    } else if (audioRef.current) {
       audioRef.current.playbackRate = p
     }
   }
 
   // Toggle Key Lock (preservesPitch)
+  // When key-lock is OFF the browser skips time-stretching, which itself
+  // removes the most common source of buffer glitches at altered rates.
   const toggleKeyLock = () => {
     const next = !keyLock
     setKeyLock(next)
@@ -458,7 +684,21 @@ export default function Deck({
     // Clip targetPitch between 0.84 and 1.16 (±16%)
     const clippedPitch = Math.max(0.84, Math.min(1.16, targetPitch))
     setPitch(clippedPitch)
-    if (audioRef.current) {
+    if (audioRef.current && audioContext) {
+      // Use the same smooth ramp as the pitch slider to avoid glitches
+      const startRate = audioRef.current.playbackRate
+      const steps = 8
+      const stepMs = 40 / steps
+      for (let i = 1; i <= steps; i++) {
+        const frac = i / steps
+        const rate = startRate + (clippedPitch - startRate) * frac
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.playbackRate = rate
+          }
+        }, Math.round(stepMs * i))
+      }
+    } else if (audioRef.current) {
       audioRef.current.playbackRate = clippedPitch
     }
   }
@@ -514,7 +754,11 @@ export default function Deck({
           ref={canvasRef}
           width={400}
           height={80}
-          className="absolute inset-0 h-full w-full"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUpOrLeave}
+          onMouseLeave={handleMouseUpOrLeave}
+          className="absolute inset-0 h-full w-full cursor-pointer"
         />
         {/* Timing Overlay */}
         <div className="absolute bottom-1 right-2 bg-black/70 px-1.5 py-0.5 rounded text-[10px] font-mono text-zinc-400">
@@ -548,9 +792,11 @@ export default function Deck({
             </button>
 
             <button
-              onClick={handleCue}
+              onMouseDown={handleCueMouseDown}
+              onMouseUp={handleCueMouseUp}
+              onMouseLeave={handleCueMouseUp}
               disabled={!track}
-              className="flex-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white font-bold py-2.5 text-center transition disabled:opacity-30"
+              className="flex-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white font-bold py-2.5 text-center transition disabled:opacity-30 select-none"
             >
               CUE
             </button>

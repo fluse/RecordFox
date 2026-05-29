@@ -24,6 +24,7 @@ export interface Track {
   format: string // e.g. "MP3"
   rating: number // 0 to 5 stars
   bitrate?: number // bitrate in kbps
+  position?: number
 }
 
 export interface AppSettings {
@@ -108,6 +109,30 @@ export function initDb(): void {
       // Self-healing database: Ensure all tracks have filesize, format, rating, and bitrate
       const fs = require('fs')
       let dbUpdated = false
+
+      // Assign position sequences to existing tracks if they don't have them
+      if (dbData.tracks && Array.isArray(dbData.tracks)) {
+        const playlistTrackGroups: Record<string, Track[]> = {}
+        for (const track of dbData.tracks) {
+          if (!playlistTrackGroups[track.playlistId]) {
+            playlistTrackGroups[track.playlistId] = []
+          }
+          playlistTrackGroups[track.playlistId].push(track)
+        }
+
+        for (const playlistId in playlistTrackGroups) {
+          const group = playlistTrackGroups[playlistId]
+          let posCounter = 1
+          for (const track of group) {
+            if (track.position === undefined) {
+              track.position = posCounter
+              dbUpdated = true
+            }
+            posCounter++
+          }
+        }
+      }
+
       if (dbData.tracks && Array.isArray(dbData.tracks)) {
         for (const track of dbData.tracks) {
           let trackUpdated = false
@@ -173,7 +198,7 @@ export function initDb(): void {
                     popularimeter:
                       track.rating > 0
                         ? {
-                            email: 'saruman@syncer.app',
+                            email: 'no@email',
                             rating: [0, 32, 64, 128, 196, 255][track.rating] || 0,
                             counter: 0
                           }
@@ -235,7 +260,13 @@ export function getTracks(): Track[] {
 }
 
 export function getTracksForPlaylist(playlistId: string): Track[] {
-  return dbData.tracks.filter((t) => t.playlistId === playlistId)
+  return dbData.tracks
+    .filter((t) => t.playlistId === playlistId)
+    .sort((a, b) => {
+      const posA = a.position !== undefined ? a.position : 999999
+      const posB = b.position !== undefined ? b.position : 999999
+      return posA - posB
+    })
 }
 
 export function addPlaylist(playlist: Playlist): void {
@@ -290,9 +321,34 @@ export function addTrack(track: Track): void {
     (t) => t.id === track.id && t.playlistId === track.playlistId
   )
   if (index !== -1) {
-    dbData.tracks[index] = track
+    const existingPosition = dbData.tracks[index].position
+    dbData.tracks[index] = {
+      ...track,
+      position: track.position !== undefined ? track.position : existingPosition
+    }
   } else {
-    dbData.tracks.push(track)
+    const playlistTracks = dbData.tracks.filter((t) => t.playlistId === track.playlistId)
+    const maxPos = playlistTracks.reduce(
+      (max, t) => (t.position !== undefined && t.position > max ? t.position : max),
+      0
+    )
+    dbData.tracks.push({
+      ...track,
+      position: track.position !== undefined ? track.position : maxPos + 1
+    })
+  }
+  saveDb()
+}
+
+export function updateTrackPositions(playlistId: string, trackIds: string[]): void {
+  const playlistTracks = dbData.tracks.filter((t) => t.playlistId === playlistId)
+  for (const track of playlistTracks) {
+    const newIdx = trackIds.indexOf(track.id)
+    if (newIdx !== -1) {
+      track.position = newIdx + 1
+    } else {
+      track.position = trackIds.length + 1
+    }
   }
   saveDb()
 }
@@ -361,7 +417,7 @@ export function updateTrackRating(trackId: string, playlistId: string, rating: n
 
       const tags = {
         popularimeter: {
-          email: 'saruman@syncer.app',
+          email: 'no@email',
           rating: ratingVal,
           counter: 0
         }

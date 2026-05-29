@@ -35,6 +35,7 @@ export interface UseAppReturn {
   handleUpdateBpmInState: (trackId: string, bpm: number) => void
   handleUpdateKeyInState: (trackId: string, key: string) => void
   handleUpdateRatingInState: (trackId: string, rating: number) => void
+  handleReorderTracks: (playlistId: string, trackIds: string[]) => Promise<void>
   handleUpdateSettings: (newSettings: Partial<AppSettings>) => Promise<void>
   handleMigrate: (newPath: string, moveFiles: boolean) => Promise<void>
   handleMouseDownSplitter: (e: React.MouseEvent) => void
@@ -102,6 +103,40 @@ export function useApp(): UseAppReturn {
     setLoadedTrackA((prev) => (prev && prev.id === trackId ? { ...prev, rating } : prev))
     setLoadedTrackB((prev) => (prev && prev.id === trackId ? { ...prev, rating } : prev))
   }, [])
+
+  const handleReorderTracks = useCallback(
+    async (playlistId: string, trackIds: string[]): Promise<void> => {
+      // Optimistic update
+      setTracks((prev) => {
+        const trackMap = new Map(prev.map((t) => [t.id, t]))
+        return trackIds
+          .map((id, index) => {
+            const track = trackMap.get(id)
+            if (track) {
+              return { ...track, position: index + 1 }
+            }
+            return null
+          })
+          .filter(Boolean) as Track[]
+      })
+
+      try {
+        const res = await window.api.reorderTracks(playlistId, trackIds)
+        if (!res.success) {
+          alert(t('actions.errorReorderTracks', { error: res.error || '' }))
+          // Re-fetch to revert to actual db state
+          const list = await window.api.getTracks(playlistId)
+          setTracks(list)
+        }
+      } catch (err) {
+        console.error('Failed to reorder tracks:', err)
+        alert(t('actions.errorReorderTracks', { error: String(err) }))
+        const list = await window.api.getTracks(playlistId)
+        setTracks(list)
+      }
+    },
+    [t]
+  )
 
   const handleLoadTrack = useCallback((track: Track, deck: 'A' | 'B'): void => {
     if (deck === 'A') {
@@ -409,6 +444,7 @@ export function useApp(): UseAppReturn {
     handleUpdateBpmInState,
     handleUpdateKeyInState,
     handleUpdateRatingInState,
+    handleReorderTracks,
     handleUpdateSettings,
     handleMigrate,
     handleMouseDownSplitter
