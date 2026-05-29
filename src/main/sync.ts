@@ -9,9 +9,13 @@ import {
   updatePlaylistStatus, 
   getDownloadsDir, 
   getCoversDir, 
-  getTracksForPlaylist 
+  getTracksForPlaylist,
+  updateTrackBpm,
+  updateTrackKey
 } from './db'
 import { getPlaylistInfo, downloadTrack } from './downloader'
+import { analyzeBpm } from './bpm'
+import { analyzeKey } from './key'
 import nodeId3 from 'node-id3'
 
 // Map of active synchronization tasks
@@ -79,7 +83,8 @@ export async function syncPlaylist(playlist: Playlist, win: BrowserWindow): Prom
           filesize: 0,
           format: 'MP3',
           rating: 0,
-          bitrate: 0
+          bitrate: 0,
+          key: ''
         }
         addTrack(placeholderTrack)
         addedPlaceholders = true
@@ -233,13 +238,14 @@ export async function syncPlaylist(playlist: Playlist, win: BrowserWindow): Prom
             console.error('Failed to get track filesize:', e)
           }
 
-          // Add to database
+          // Add to database (bpm=0 initially, will be updated after analysis)
           const newTrack: Track = {
             id: ytTrack.id,
             playlistId: playlist.id,
             title,
             artist,
-            bpm: 0, // Will be analyzed in renderer
+            bpm: 0,
+            key: '',
             duration: ytTrack.duration,
             filepath,
             coverPath,
@@ -259,6 +265,33 @@ export async function syncPlaylist(playlist: Playlist, win: BrowserWindow): Prom
             current: currentDownloadIndex,
             total: toDownload.length
           })
+
+          // Analyze BPM and Key in the background (non-blocking, run in parallel)
+          analyzeBpm(filepath)
+            .then((bpm) => {
+              if (bpm > 0) {
+                updateTrackBpm(ytTrack.id, playlist.id, bpm)
+                if (!win.isDestroyed()) {
+                  win.webContents.send('bpm-analyzed', ytTrack.id, playlist.id, bpm)
+                }
+              }
+            })
+            .catch((err) => {
+              console.error(`BPM analysis failed for track ${ytTrack.id}:`, err)
+            })
+
+          analyzeKey(filepath)
+            .then(({ camelot, tkey }) => {
+              if (camelot) {
+                updateTrackKey(ytTrack.id, playlist.id, camelot, tkey)
+                if (!win.isDestroyed()) {
+                  win.webContents.send('key-analyzed', ytTrack.id, playlist.id, camelot)
+                }
+              }
+            })
+            .catch((err) => {
+              console.error(`Key analysis failed for track ${ytTrack.id}:`, err)
+            })
         } catch (err) {
           console.error(`Failed to download track ${ytTrack.id}:`, err)
           // Send completion event even on failure so progress bar advances and UI cleans up

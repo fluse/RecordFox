@@ -9,8 +9,10 @@ import {
   getPlaylists, 
   addPlaylist as addPlaylistToDb, 
   deletePlaylist as deletePlaylistFromDb, 
-  getTracksForPlaylist, 
+  getTracksForPlaylist,
+  getTracks,
   updateTrackBpm,
+  updateTrackKey,
   updateTrackRating,
   getSettings,
   updateSettings,
@@ -20,6 +22,8 @@ import {
 } from './db'
 import { getPlaylistInfo, ensureYtdlp } from './downloader'
 import { syncPlaylist, startBackgroundSync, stopBackgroundSync } from './sync'
+import { analyzeBpm } from './bpm'
+import { analyzeKey } from './key'
 
 // Register custom media protocol to serve local MP3 files securely and support audio streaming/seeking
 protocol.registerSchemesAsPrivileged([
@@ -149,6 +153,38 @@ app.whenReady().then(async () => {
     }
   })
 
+  // On-demand BPM re-analysis for a single track
+  ipcMain.handle('tracks:analyze-bpm', async (_, trackId: string, playlistId: string, filepath: string) => {
+    try {
+      const bpm = await analyzeBpm(filepath)
+      if (bpm > 0) {
+        updateTrackBpm(trackId, playlistId, bpm)
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('bpm-analyzed', trackId, playlistId, bpm)
+        }
+      }
+      return { success: true, bpm }
+    } catch (e: any) {
+      return { success: false, error: e.message }
+    }
+  })
+
+  // On-demand Key analysis for a single track
+  ipcMain.handle('tracks:analyze-key', async (_, trackId: string, playlistId: string, filepath: string) => {
+    try {
+      const { camelot, tkey } = await analyzeKey(filepath)
+      if (camelot) {
+        updateTrackKey(trackId, playlistId, camelot, tkey)
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('key-analyzed', trackId, playlistId, camelot)
+        }
+      }
+      return { success: true, key: camelot }
+    } catch (e: any) {
+      return { success: false, error: e.message }
+    }
+  })
+
   ipcMain.handle('tracks:update-rating', (_, trackId: string, playlistId: string, rating: number) => {
     try {
       updateTrackRating(trackId, playlistId, rating)
@@ -225,6 +261,63 @@ app.whenReady().then(async () => {
   if (mainWindow) {
     startBackgroundSync(mainWindow)
   }
+
+  // Analyze BPM and Key for existing tracks missing either value
+  // (runs in background 3s after startup to not block UI)
+  setTimeout(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    const { existsSync } = require('fs')
+    const allTracks = getTracks()
+
+    const needsBpm = allTracks.filter(t => t.bpm === 0 && t.filepath && existsSync(t.filepath))
+    const needsKey = allTracks.filter(t => (!t.key || t.key === '') && t.filepath && existsSync(t.filepath))
+
+    console.log(`[Analysis] ${needsBpm.length} tracks need BPM, ${needsKey.length} tracks need Key`)
+
+    const analyzeNext = async (index: number) => {
+      if (index >= needsBpm.length) {
+        console.log('[BPM] Background analysis complete.')
+        return
+      }
+      const track = needsBpm[index]
+      try {
+        const bpm = await analyzeBpm(track.filepath)
+        if (bpm > 0) {
+          updateTrackBpm(track.id, track.playlistId, bpm)
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('bpm-analyzed', track.id, track.playlistId, bpm)
+          }
+        }
+      } catch (err) {
+        console.error(`[BPM] Failed for ${track.id}:`, err)
+      }
+      setTimeout(() => analyzeNext(index + 1), 200)
+    }
+
+    const analyzeKeyNext = async (index: number) => {
+      if (index >= needsKey.length) {
+        console.log('[Key] Background analysis complete.')
+        return
+      }
+      const track = needsKey[index]
+      try {
+        const { camelot, tkey } = await analyzeKey(track.filepath)
+        if (camelot) {
+          updateTrackKey(track.id, track.playlistId, camelot, tkey)
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('key-analyzed', track.id, track.playlistId, camelot)
+          }
+        }
+      } catch (err) {
+        console.error(`[Key] Failed for ${track.id}:`, err)
+      }
+      setTimeout(() => analyzeKeyNext(index + 1), 200)
+    }
+
+    analyzeNext(0)
+    // Stagger key analysis by 1s to avoid peak CPU with BPM analysis
+    setTimeout(() => analyzeKeyNext(0), 1000)
+  }, 3000)
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

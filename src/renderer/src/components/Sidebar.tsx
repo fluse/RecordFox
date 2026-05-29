@@ -1,6 +1,6 @@
 import React from 'react'
 import { Plus, RefreshCw, Trash2, CheckCircle2, AlertCircle, Loader2, Settings } from 'lucide-react'
-import { Playlist } from '../../../main/db'
+import type { Playlist } from '@main/db'
 import logo from '../assets/logo-recordfox.svg'
 
 interface SidebarProps {

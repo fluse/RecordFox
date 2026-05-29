@@ -1,0 +1,39 @@
+name: Build and Release RecordFox
+
+# Der Workflow startet automatisch, wenn du einen neuen Tag pushst (z.B. v1.0.0)
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Notwendig, damit der Workflow Schreibrechte hat, um das Release auf GitHub anzulegen
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Hier definieren wir eine Matrix, um die App für alle drei Betriebssysteme parallel zu bauen
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Dependencies
+        run: npm ci # Nutze npm ci für saubere, reproduzierbare Installationen (setzt eine package-lock.json voraus)
+        # Falls du yarn oder pnpm nutzt, tausche diesen Befehl entsprechend aus (z.B. yarn install)
+
+      - name: Build & Publish to GitHub Releases
+        env:
+          # Der Token wird von GitHub automatisch bereitgestellt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Dieser Befehl baut die App und lädt sie direkt ins GitHub Release hoch
+        run: npx electron-builder --publish always

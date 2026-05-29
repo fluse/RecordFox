@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { X, Folder, FolderOpen, Sun, Moon, Loader2 } from 'lucide-react'
-import { AppSettings } from '../../../main/db'
+import type { AppSettings } from '@main/db'
 
 interface SettingsModalProps {
   isOpen: boolean

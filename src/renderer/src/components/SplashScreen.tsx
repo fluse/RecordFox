@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import logoSvg from '../assets/logo-recordfox.svg'
 
 interface SplashScreenProps {

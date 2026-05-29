@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { Play, Pause, Lock, Unlock } from 'lucide-react'
-import { Track } from '../../../main/db'
+import type { Track } from '@main/db'
 import { getMediaUrl, formatDuration } from '../utils/audio'
 
 interface DeckProps {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Deck from './Deck'
 import Mixer from './Mixer'
-import { Track } from '../../../main/db'
+import type { Track } from '@main/db'
 
 interface DjMixerProps {
   trackA: Track | null
@@ -117,7 +117,7 @@ export default function DjMixer({
   }
 
   return (
-    <div className="flex items-center justify-center gap-6 border-b border-zinc-900 bg-zinc-950/40 p-6">
+    <div className="flex items-center justify-center gap-6 p-6">
       
       {/* DECK A */}
       <Deck

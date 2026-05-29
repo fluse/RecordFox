@@ -44,6 +44,34 @@ const api = {
     }
   },
 
+  // BPM analyzed event: fires when main process completes BPM analysis for a track
+  onBpmAnalyzed: (callback: (trackId: string, playlistId: string, bpm: number) => void) => {
+    const subscription = (_event: any, trackId: string, playlistId: string, bpm: number) =>
+      callback(trackId, playlistId, bpm)
+    ipcRenderer.on('bpm-analyzed', subscription)
+    return () => {
+      ipcRenderer.removeListener('bpm-analyzed', subscription)
+    }
+  },
+
+  // Key analyzed event: fires when main process completes key analysis for a track
+  onKeyAnalyzed: (callback: (trackId: string, playlistId: string, key: string) => void) => {
+    const subscription = (_event: any, trackId: string, playlistId: string, key: string) =>
+      callback(trackId, playlistId, key)
+    ipcRenderer.on('key-analyzed', subscription)
+    return () => {
+      ipcRenderer.removeListener('key-analyzed', subscription)
+    }
+  },
+
+  // Trigger on-demand BPM re-analysis for a single track
+  analyzeTrackBpm: (trackId: string, playlistId: string, filepath: string) =>
+    ipcRenderer.invoke('tracks:analyze-bpm', trackId, playlistId, filepath),
+
+  // Trigger on-demand Key analysis for a single track
+  analyzeTrackKey: (trackId: string, playlistId: string, filepath: string) =>
+    ipcRenderer.invoke('tracks:analyze-key', trackId, playlistId, filepath),
+
   logError: (message: string) => ipcRenderer.send('log-error', message)
 }
 

@@ -5,7 +5,8 @@ import DjMixer from './components/DjMixer'
 import AddPlaylistModal from './components/AddPlaylistModal'
 import SettingsModal from './components/SettingsModal'
 import SplashScreen from './components/SplashScreen'
-import { Playlist, Track, AppSettings } from '../../main/db'
+import { ChevronDown } from 'lucide-react'
+import type { Playlist, Track, AppSettings } from '@main/db'
 
 export default function App(): React.JSX.Element {
   const [showSplash, setShowSplash] = useState(true)
@@ -20,6 +21,7 @@ export default function App(): React.JSX.Element {
   // Modal control
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isMixerCollapsed, setIsMixerCollapsed] = useState(false)
 
   // App settings state
   const [settings, setSettings] = useState<AppSettings>({
@@ -180,9 +182,21 @@ export default function App(): React.JSX.Element {
       }
     })
 
+    // Listen for BPM analysis results from the main process
+    const cleanupBpmAnalyzed = window.api.onBpmAnalyzed((trackId, _playlistId, bpm) => {
+      handleUpdateBpmInState(trackId, bpm)
+    })
+
+    // Listen for Key analysis results from the main process
+    const cleanupKeyAnalyzed = window.api.onKeyAnalyzed((trackId, _playlistId, key) => {
+      handleUpdateKeyInState(trackId, key)
+    })
+
     return () => {
       cleanupSyncStatus()
       cleanupDownloadProgress()
+      cleanupBpmAnalyzed()
+      cleanupKeyAnalyzed()
     }
   }, [selectedPlaylistId])
 
@@ -242,6 +256,19 @@ export default function App(): React.JSX.Element {
     }
     if (loadedTrackB?.id === trackId) {
       setLoadedTrackB(prev => prev ? { ...prev, bpm } : null)
+    }
+  }
+
+  // Called when a track's key is analyzed in the background
+  const handleUpdateKeyInState = (trackId: string, key: string) => {
+    setTracks((prev) =>
+      prev.map((t) => (t.id === trackId ? { ...t, key } : t))
+    )
+    if (loadedTrackA?.id === trackId) {
+      setLoadedTrackA(prev => prev ? { ...prev, key } : null)
+    }
+    if (loadedTrackB?.id === trackId) {
+      setLoadedTrackB(prev => prev ? { ...prev, key } : null)
     }
   }
 
@@ -323,12 +350,31 @@ export default function App(): React.JSX.Element {
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-zinc-950 text-zinc-100 font-sans antialiased">
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       {/* Top Half: DJ Mixer Dashboard */}
-      <DjMixer
-        trackA={loadedTrackA}
-        trackB={loadedTrackB}
-        onUpdateBpm={handleUpdateBpmInState}
-        onLoadTrack={handleLoadTrack}
-      />
+      <div className="relative flex-shrink-0 z-20">
+        <div 
+          className="transition-all duration-300 ease-in-out overflow-hidden border-b border-zinc-900 bg-zinc-950/40"
+          style={{ 
+            maxHeight: isMixerCollapsed ? '0px' : '500px', 
+            opacity: isMixerCollapsed ? 0 : 1,
+            borderBottomWidth: isMixerCollapsed ? '0px' : '1px'
+          }}
+        >
+          <DjMixer
+            trackA={loadedTrackA}
+            trackB={loadedTrackB}
+            onUpdateBpm={handleUpdateBpmInState}
+            onLoadTrack={handleLoadTrack}
+          />
+        </div>
+        {/* Toggle Button */}
+        <button
+          onClick={() => setIsMixerCollapsed(!isMixerCollapsed)}
+          className="absolute bottom-[-12px] left-1/2 -translate-x-1/2 z-30 flex h-6 w-12 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-100 hover:border-primary/55 transition-colors shadow-lg cursor-pointer"
+          title={isMixerCollapsed ? "Mixer einblenden" : "Mixer ausblenden"}
+        >
+          <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isMixerCollapsed ? '' : 'rotate-180'}`} />
+        </button>
+      </div>
 
       {/* Bottom Half: Sidebar and Track Browser */}
       <div className="flex flex-1 overflow-hidden">
@@ -357,6 +403,7 @@ export default function App(): React.JSX.Element {
             tracks={tracks}
             onLoadTrack={handleLoadTrack}
             onUpdateBpm={handleUpdateBpmInState}
+            onUpdateKey={handleUpdateKeyInState}
             onUpdateRating={handleUpdateRatingInState}
             currentTrackA={loadedTrackA}
             currentTrackB={loadedTrackB}

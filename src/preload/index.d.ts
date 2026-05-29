@@ -1,4 +1,4 @@
-import { Playlist, Track, AppSettings } from '../main/db'
+import { Playlist, Track, AppSettings } from '@main/db'
 
 declare global {
   interface Window {
@@ -30,6 +30,14 @@ declare global {
           total: number
         }) => void
       ) => () => void
+      onBpmAnalyzed: (
+        callback: (trackId: string, playlistId: string, bpm: number) => void
+      ) => () => void
+      onKeyAnalyzed: (
+        callback: (trackId: string, playlistId: string, key: string) => void
+      ) => () => void
+      analyzeTrackBpm: (trackId: string, playlistId: string, filepath: string) => Promise<{ success: boolean; bpm?: number; error?: string }>
+      analyzeTrackKey: (trackId: string, playlistId: string, filepath: string) => Promise<{ success: boolean; key?: string; error?: string }>
       logError: (message: string) => void
     }
   }

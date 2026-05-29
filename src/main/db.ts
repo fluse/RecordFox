@@ -16,6 +16,7 @@ export interface Track {
   title: string;
   artist: string;
   bpm: number;
+  key: string; // Camelot notation, e.g. "8A", "10B" – empty string if not yet analyzed
   duration: number; // in seconds
   filepath: string; // absolute local path to MP3
   coverPath: string; // absolute local path to Cover image
@@ -121,6 +122,10 @@ export function initDb(): void {
           }
           if (track.rating === undefined) {
             track.rating = 0
+            trackUpdated = true
+          }
+          if (track.key === undefined) {
+            track.key = ''
             trackUpdated = true
           }
           if (track.bitrate === undefined || track.bitrate === 0) {
@@ -280,6 +285,24 @@ export function updateTrackBpm(trackId: string, playlistId: string, bpm: number)
       nodeId3.update(tags, track.filepath)
     } catch (e) {
       console.error(`Failed to update BPM ID3 tag for track ${trackId}:`, e)
+    }
+  }
+}
+
+export function updateTrackKey(trackId: string, playlistId: string, key: string, tkey: string): void {
+  const track = dbData.tracks.find(t => t.id === trackId && t.playlistId === playlistId)
+  if (track) {
+    track.key = key
+    saveDb()
+
+    // Write key to the ID3 TKEY tag of the local file
+    try {
+      const nodeId3 = require('node-id3')
+      const tags: any = {}
+      if (tkey) tags.initialKey = tkey // TKEY frame
+      nodeId3.update(tags, track.filepath)
+    } catch (e) {
+      console.error(`Failed to update key ID3 tag for track ${trackId}:`, e)
     }
   }
 }
