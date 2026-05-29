@@ -1,119 +1,102 @@
-# Task-Liste: Umsetzung RecordFox
+# 🦊 RekordFox - Master Engineering Roadmap
 
-Diese Liste enthält alle notwendigen Arbeitsschritte zur vollständigen Realisierung der Desktop-App. Die Tasks sind chronologisch nach Abhängigkeiten sortiert.
+Diese Roadmap definiert die Entwicklungsschritte vom aktuellen Prototypen zum professionellen DJ-Performance-Tool. Die Priorität liegt strikt auf: **1. Performance -> 2. Beatmatching-Präzision -> 3. Effekte -> 4. Hardware.**
 
----
+## Phase 1: Deep-Level Performance & Refactoring (Fokus: 60 FPS)
+Bevor neue Features kommen, muss das System so optimiert werden, dass es selbst bei hoher CPU-Last nicht stottert.
 
-## Phase 1: Projekt-Setup & Infrastruktur
+- [ ] **Pre-Rendering via OffscreenCanvas:**
+  - [ ] Den Waveform-Zeichnungs-Prozess aus dem Play-Loop nehmen.
+  - [ ] Komplette Waveform beim Laden einmalig auf ein unsichtbares Canvas rendern.
+  - [ ] Im `requestAnimationFrame` nur noch `ctx.drawImage()` (Bit-Blitting) für den aktuellen sichtbaren Ausschnitt nutzen.
+- [ ] **React-State für High-Frequency-Updates entkoppeln:**
+  - [ ] Die Millisekunden-Anzeige und die Waveform-Verschiebung dürfen keine React-Rerenders (`useState`) mehr auslösen.
+  - [ ] Stattdessen direkte DOM-Manipulation über `useRef` (z.B. `timeLabelRef.current.innerText`) im Play-Loop anwenden.
+- [ ] **Equal-Power Crossfader:**
+  - [ ] Linearen Lautstärkeabfall in der Mitte beheben. Trigonometrische Kurve (Sinus/Cosinus) oder `Math.sqrt()` für den Gain-Wert des Crossfaders implementieren.
 
-- [x] **1.1 Electron + React Setup**
-  - [x] Projekt mit Electron-Forge, Vite, React und TypeScript initialisieren.
-  - [x] Ordnerstruktur festlegen (`src/main`, `src/renderer`, `src/preload`).
-- [x] **1.2 Styling & UI-Bibliotheken**
-  - [x] Tailwind CSS im Renderer konfigurieren.
-  - [x] shadcn/ui konfigurieren und Basiskomponenten installieren (Button, Input, Dialog, Table, Slider, Dropdown-Menu, Progress).
-  - [x] Lucide-React Icons einbinden.
-- [x] **1.3 Datenbank & Dateisystem-Setup**
-  - [x] Lokale Speicherverzeichnisse im User-Verzeichnis (`Application Support`) erstellen.
-  - [x] SQLite Datenbank (`better-sqlite3` oder dateibasierte Store-Lösung) einrichten.
-  - [x] DB-Tabellen definieren: `playlists` (id, title, url, sync_status, last_sync) und `tracks` (id, playlist_id, title, artist, bpm, duration, filepath, youtube_id, cover_path).
+## Phase 2: Advanced Beatmatching & Sync-Engine (Fokus: Präzision)
+Das Herzstück des DJings. Die Mathematik hinter den Tracks muss sichtbar und nutzbar gemacht werden.
 
----
+- [ ] **Beat-Grid Rendering:**
+  - [ ] Anhand von BPM und `currentTime` die genauen Pixel-Positionen der Beats berechnen.
+  - [ ] Vertikale, mitlaufende Grid-Linien über die Waveform im Canvas zeichnen.
+- [ ] **Phasen-Meter (Phase Alignment):**
+  - [ ] Logik schreiben, die den Bruchteil eines Beats berechnet (z.B. Deck A ist bei Beat 4.2, Deck B bei Beat 8.5 -> Differenz 0.3 Beats).
+  - [ ] Kleine UI-Komponente (Balken) über dem Crossfader bauen, die anzeigt, ob Deck B optisch vor oder hinter Deck A läuft.
+- [ ] **Nudging / Pitch-Bend (Manuelles Angleichen):**
+  - [ ] Buttons (`+` und `-`) in die UI einfügen.
+  - [ ] Bei `onMouseDown` die `playbackRate` temporär um 3% erhöhen/verringern. Bei `onMouseUp` sofort auf den echten Pitch-Wert zurückspringen lassen.
+- [ ] **Grid Snapping / Quantisierung:**
+  - [ ] Globalen `Quantize`-Toggle einbauen.
+  - [ ] Hilfsfunktion `getQuantizedTime()` schreiben, die Klick-Positionen oder Button-Presses auf den mathematisch nächsten vollen Beat (oder halben Beat) auf-/abrundet.
+  - [ ] `seek()` und Loop-Aktionen durch diese Quantisierungs-Logik schleusen.
 
-## Phase 2: Main-Prozess & Background-Bibliotheken
+## Phase 3: Performance-Navigation (Fokus: Track-Kontrolle)
+Tools, um live im Track zu springen, ohne den musikalischen Flow zu stören.
 
-- [x] **2.1 Integration von yt-dlp & FFmpeg**
-  - [x] Helper-Skript zum Ermitteln/Herunterladen der passenden `yt-dlp` und `ffmpeg` Binaries für das jeweilige OS (macOS Intel/M-Chips).
-  - [x] Wrapper-Funktionen für `yt-dlp` zum Auslesen von Playlist-Metadaten (`--dump-json`) und Herunterladen von Audio.
-- [x] **2.2 Metadaten- & BPM-Analyse-Pipeline**
-  - [x] Integration von `node-id3` zum Schreiben the ID3-Metadaten.
-  - [x] Download und temporäres Speichern von Cover-Thumbnails.
-  - [x] Implementierung der BPM-Erkennungsfunktion in Node.js (Audio dekodieren und Peak-Erkennung durchführen).
-  - [x] Parsing-Logik schreiben, um Interpret und Titel zuverlässig aus dem Video-Titel zu trennen (z. B. durch RegExp wie `Artist - Title`).
+- [ ] **Hot Cues & Beat Jump:**
+  - [ ] Speicherbare Hot Cues (1-8) implementieren (speichern in `@main/db`).
+  - [ ] Beat Jump Buttons bauen (Springe exakt 16 oder 32 Beats vor/zurück durch Addition zur `currentTime`).
+- [ ] **Key Sync / Harmonic Mixing:**
+  - [ ] Button einbauen, der die Tonart von Deck B an Deck A anpasst.
+  - [ ] Pitch-Shifting im WSOLA-Worklet ansteuern, um die Differenz in Halbtönen auszugleichen.
+- [ ] **Overview-Waveform Navigation:**
+  - [ ] Eine statische Miniatur-Waveform rendern.
+  - [ ] Klick-Event hinzufügen, das prozentual zur Track-Länge rechnet und direkt einen `seek()` ausführt.
+- [ ] **Vinyl Brake (Motor-Stopp):**
+  - [ ] Beim Klick auf Pause den Track nicht hart abbrechen, sondern per `playbackRate.exponentialRampToValueAtTime()` sanft auf 0 drosseln.
 
----
+## Phase 4: Sound-Design & Effekte (Fokus: Mix-Qualität)
+Kreative Werkzeuge für nahtlose und spannende Übergänge.
 
-## Phase 3: Synchronisations- & Download-Engine (Main-Prozess)
+- [ ] **"Color" Filter (Bi-Polar HPF/LPF):**
+  - [ ] Einen Biquad-Filter pro Deck einrichten.
+  - [ ] UI-Knob: Links von der Mitte = Low-Pass (Höhen weg), Rechts von der Mitte = High-Pass (Bässe weg), Mitte = Bypass.
+- [ ] **Tempo-Synchrone Beat FX:**
+  - [ ] Echo/Delay-Kette aufbauen (`DelayNode` -> `GainNode` -> Feedback-Loop).
+  - [ ] Delay-Zeit dynamisch an die aktuelle BPM koppeln (z.B. exakt 1/2 Beat Delay).
+- [ ] **Reverb / Wash-Out:**
+  - [ ] `ConvolverNode` für Raumhall integrieren (für Drop-Build-Ups).
+  - [ ] Optional ein Makro ("Wash-Out") bauen: Ein Button, der gleichzeitig Echo hochzieht, High-Pass aktiviert und Lautstärke senkt.
+- [ ] **Slip Mode (Flux Mode):**
+  - [ ] Wenn aktiviert, läuft beim Setzen eines Loops oder beim Scratchen/Pausieren ein Timer im Hintergrund weiter.
+  - [ ] Beim Loslassen springt die `currentTime` per `seek()` exakt dorthin, wo der Track ohne den Eingriff gewesen wäre.
 
-- [x] **3.1 Download-Queue & Status-IPC**
-  - [x] Asynchronen Queue-Manager implementieren, der Downloads nacheinander abarbeitet.
-  - [x] IPC-Event-Handler schreiben, um dem Renderer den aktuellen Download-Status zu senden (z. B. Fortschritt in Prozent).
-- [x] **3.2 Sync-Manager & Cron-Job**
-  - [x] Synchronisations-Logik schreiben: Playlist-Inhalt bei YouTube abfragen, mit DB abgleichen, neue Tracks in Queue einreihen und verwaiste Tracks löschen.
-  - [x] Cron-Timer-Interval (z. B. alle 30 Min) im Main-Prozess registrieren, um alle aktiven Playlists automatisch zu synchronisieren.
+## Phase 5: Hardware-Integration & Pro-Routing (Fokus: Haptik)
+Den Controller in ein echtes Stück Hardware verwandeln.
 
----
+- [ ] **Pre-Fader Listen (PFL) / Kopfhörer-Routing:**
+  - [ ] Audiosignal *vor* dem Line-Fader abgreifen.
+  - [ ] Signal auf `audioContext.destination` Kanal 3/4 routen (Standard für DJ-Interface-Kopfhörer).
+- [ ] **Web MIDI API (Controller-Mapping):**
+  - [ ] `navigator.requestMIDIAccess()` integrieren.
+  - [ ] Mapping-Dictionary schreiben (z.B. MIDI CC 12 -> EQ High Deck A).
+  - [ ] Fader und Knobs von externen Controllern empfangen und auf die React/Engine-Logik mappen.
+- [ ] **Master VU-Meter:**
+  - [ ] `AnalyserNode` nach dem Master-Gain schalten.
+  - [ ] RMS-Werte berechnen und als optische LED-Kette (grün/gelb/rot) darstellen, um Clipping zu vermeiden.
 
-## Phase 4: Frontend (Renderer-Prozess) - UI-Layout
+## Phase 6: Cloud-Library Expansion (SoundCloud Integration)
+Das Ziel ist es, den bestehenden YouTube-Importer so zu abstrahieren, dass SoundCloud-URLs (Playlists & Tracks) durch dieselbe Analyse- und Tagging-Pipeline laufen.
 
-- [x] **4.1 Haupt-Layout (Sidebar + Main)**
-  - [x] Responsive 3-Spalten-Layout (Sidebar, Trackliste, DJ-Mixer).
-  - [x] Sidebar: Liste der Playlists mit Covern, Add-Playlist-Button, Sync-Indikatoren.
-  - [x] Modaler Dialog "Playlist hinzufügen" mit Validierung der YouTube-URL.
-- [x] **4.2 Trackliste**
-  - [x] Tabelle mit Tracks der ausgewählten Playlist (Cover, Title, Interpret, BPM, Dauer).
-  - [x] Such- und Sortierfunktion für Tracks (nach Titel, Interpret, BPM).
-  - [x] Kontextmenü/Aktions-Buttons: "In Deck A laden", "In Deck B laden".
-
----
-
-## Phase 5: DJ-Mixer & Player (Renderer-Prozess)
-
-- [x] **5.1 Web Audio API Basis-Integration**
-  - [x] Globalen AudioContext initialisieren.
-  - [x] Audio-Graphen pro Deck erstellen (SourceNode -> PitchNode -> BiquadFilter EQ -> Fader -> Master -> Destination).
-- [x] **5.2 Dual-Deck Steuerung**
-  - [x] Play, Pause und Stop für Deck A und Deck B.
-  - [x] Cue-Punkt-Logik (Setzen/Springen).
-  - [x] Pitch-Control: Slider zur Anpassung der Abspielgeschwindigkeit (±16%) unter Erhaltung der Tonhöhe (preservesPitch = true).
-- [x] **5.3 Mixer-Sektion**
-  - [x] 3-Band EQ Knobs für Höhen, Mitten, Tiefen pro Deck.
-  - [x] Kanalfader und ein globaler Crossfader zur Überblendung zwischen Deck A und B.
-- [x] **5.4 Looping & Takt-Synchronisation**
-  - [x] Loop-In & Loop-Out Steuerung.
-  - [x] Beat-Loop Tasten (1, 2, 4, 8, 16 Beats) – nutzt die BPM des Tracks für die Zeitberechnung.
-- [x] **5.5 Waveform-Visualisierung**
-  - [x] Rendern der Wellenform auf einem Canvas durch Vorab-Dekodierung der geladenen Audiodatei (AudioBuffer).
-  - [x] Scrolling-Waveform-Animation während der Wiedergabe (Spur bewegt sich an einer vertikalen Markierungslinie vorbei).
-
----
-
-## Phase 6: Qualitätssicherung & Polishing
-
-- [x] **6.1 UI/UX Polishing**
-  - [x] Premium-Aesthetics implementieren (Glassmorphismus, sanfte Hover-Effekte, edle Farbverläufe).
-  - [x] Drag-and-Drop Unterstützung: Ziehen eines Tracks aus der Liste direkt auf Deck A oder B.
-- [x] **6.2 Error-Handling & Logging**
-  - [x] Robuste Behandlung von ungültigen/privaten YouTube-URLs.
-  - [x] Fehler-Logbuch für fehlgeschlagene Downloads oder Konvertierungen.
-- [x] **6.3 Integrationstests & App-Packaging**
-  - [x] Manuelles Testen des vollständigen Sync- und DJ-Workflows.
-  - [x] Build-Prozess konfigurieren (Electron Builder), um ein lauffähiges `.dmg` für macOS zu erzeugen.
-
----
-
-## Phase 7: Einstellungen & Poti-Drehregler (Erweiterung)
-
-- [x] **7.1 Datenbank-Erweiterung für Einstellungen & Metadaten**
-  - [x] Einstellungen-Schema (Theme, DownloadPath, SidebarWidth) in `db.ts` definieren.
-  - [x] Track-Schema erweitern um `filesize`, `format` und `rating` (0 bis 5).
-  - [x] Persistente Lade- und Schreibfunktionen für Einstellungen bereitstellen.
-- [x] **7.2 Main-Prozess IPC & Pfad-Migration**
-  - [x] IPC-Handler `settings:get` und `settings:update` registrieren.
-  - [x] IPC-Handler `dialog:select-directory` und `dialog:confirm-migration` via Electron-Dialog implementieren.
-  - [x] Physische Dateimigrations-Logik in `db.ts` schreiben (verschieben der Dateien und Pfadanpassung in der DB).
-  - [x] IPC-Handler `tracks:update-rating` zum Aktualisieren des Ratings in DB und Schreiben des ID3 POPM-Tags.
-- [x] **7.3 Custom Poti-Komponente (Knob)**
-  - [x] Reusable React `<Knob />`-Komponente mit SVG-Anzeige und Maus-Drag-Steuerung implementieren.
-  - [x] Doppelklick-Reset-Funktion auf 0dB einbauen.
-- [x] **7.4 Drag & Drop für Decks & Column Resizer**
-  - [x] Native HTML5 Drag-and-Drop Handlers an Tabellenzeilen (Tracklist) und Decks implementieren.
-  - [x] Draggable Divider (Splitter) zwischen Sidebar und Tracklist für Spaltenbreite integrieren.
-  - [x] Breite im Layout anwenden und persistent über Settings abspeichern.
-- [x] **7.5 Mixer-Anpassung, Light-Mode & Metadaten-View**
-  - [x] EQs im Mixer auf Drehregler (Knob) umstellen.
-  - [x] Spalten für Dateigröße, Format und Sterne-Bewertung in die `Tracklist.tsx` Tabelle einbauen.
-  - [x] CSS-Variablen für Light-Mode und Übergänge in `main.css` definieren.
-  - [x] Modales Einstellungsfenster (`SettingsModal.tsx`) mit Speicherpfad-Änderung und Light/Dark-Toggle implementieren.
-  - [x] Einstellungs-Zahnrad in Sidebar einbinden und Settings-State in `App.tsx` verknüpfen.
-  - [x] Anzeige des letzten Synchronisations-Datums UND der Uhrzeit (Format: DD.MM.YYYY HH:MM) in der Playlist-Sidebar implementieren.
+- [ ] **Importer-Abstraktion (Adapter Pattern):**
+  - [ ] Das bestehende Backend-Skript so umbauen, dass es eine generische `downloadTrack(url)` Funktion gibt.
+  - [ ] URL-Erkennung schreiben: Prüfen, ob der String `youtube.com/youtu.be` oder `soundcloud.com` enthält, und den jeweiligen Downloader-Adapter aufrufen.
+- [ ] **SoundCloud Scraper / API integrieren:**
+  - [ ] *Entscheidung:* Entweder die offizielle SoundCloud API nutzen (Client ID schwer zu bekommen) ODER auf bewährte Libraries wie `yt-dlp` (via Node-Wrapper, unterstützt nativ SC!) oder NPM-Pakete wie `soundcloud-scraper` setzen.
+  - [ ] Logik schreiben, um aus einem SoundCloud-Playlist-Link alle darin enthaltenen Track-URLs zu extrahieren.
+- [ ] **Metadaten-Mapping (Vorbereitung für ID3):**
+  - [ ] SoundCloud liefert oft extrem gute Metadaten. Die API/der Scraper muss folgendes abgreifen und an euren bestehenden ID3-Tagger übergeben:
+    - `Artist` (Uploader-Name oder aus dem Titel geparst: "Artist - Title")
+    - `Title`
+    - `Artwork URL` (WICHTIG: Das hochauflösende 500x500 Cover laden, oft endet die URL auf `t500x500.jpg`, anstatt das kleine Thumbnail zu nehmen).
+    - `Genre` (SoundCloud Tags)
+- [ ] **Download & Konvertierung:**
+  - [ ] Den Audio-Stream von SoundCloud laden (meist 128kbps MP3 oder Opus).
+  - [ ] In das Format konvertieren (z.B. via `ffmpeg`), das eure Engine erwartet, falls der Stream nicht direkt kompatibel ist.
+- [ ] **Pipeline-Verknüpfung:**
+  - [ ] Die heruntergeladene und getaggte Datei exakt an die gleiche Stelle übergeben, an der auch die YouTube-Downloads landen, damit eure bestehende BPM- und Tonart-Analyse (Web Worker / Backend) automatisch anspringt.
+- [ ] **UI-Update:**
+  - [ ] Das Eingabefeld im Frontend anpassen: "YouTube oder SoundCloud Link einfügen".
+  - [ ] Ein kleines Icon/Badge in der Track-Liste (`@main/db`) hinzufügen, das anzeigt, ob der Track von YT oder SC stammt (hilft später bei der Qualitätsbeurteilung, da YT und SC unterschiedliche Audio-Kompressionen nutzen).
