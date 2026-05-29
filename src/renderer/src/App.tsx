@@ -4,13 +4,15 @@ import Tracklist from './components/Tracklist'
 import DjMixer from './components/DjMixer'
 import AddPlaylistModal from './components/AddPlaylistModal'
 import SettingsModal from './components/SettingsModal'
+import SplashScreen from './components/SplashScreen'
 import { Playlist, Track, AppSettings } from '../../main/db'
 
 export default function App(): React.JSX.Element {
+  const [showSplash, setShowSplash] = useState(true)
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null)
   const [tracks, setTracks] = useState<Track[]>([])
-  
+
   // Track loaded on Deck A / Deck B
   const [loadedTrackA, setLoadedTrackA] = useState<Track | null>(null)
   const [loadedTrackB, setLoadedTrackB] = useState<Track | null>(null)
@@ -106,7 +108,7 @@ export default function App(): React.JSX.Element {
   useEffect(() => {
     // Listen for sync status changes
     const cleanupSyncStatus = window.api.onSyncStatusChanged((playlistId, status, lastSync) => {
-      setPlaylists((prev) => 
+      setPlaylists((prev) =>
         prev.map((p) => {
           if (p.id === playlistId) {
             return { ...p, syncStatus: status as any, lastSync: lastSync || p.lastSync }
@@ -120,8 +122,8 @@ export default function App(): React.JSX.Element {
         if (status === 'idle' || status === 'error') {
           delete next[playlistId] // Clean up sync progress
         } else {
-          next[playlistId] = { 
-            ...next[playlistId], 
+          next[playlistId] = {
+            ...next[playlistId],
             status,
             total: next[playlistId]?.total || 0,
             completedTrackIds: next[playlistId]?.completedTrackIds || [],
@@ -140,14 +142,14 @@ export default function App(): React.JSX.Element {
     // Listen for download progress updates
     const cleanupDownloadProgress = window.api.onDownloadProgress((data) => {
       setActiveSyncs((prev) => {
-        const playlistState = prev[data.playlistId] || { 
-          status: 'syncing', 
-          activeDownloads: {}, 
-          completedTrackIds: [] 
+        const playlistState = prev[data.playlistId] || {
+          status: 'syncing',
+          activeDownloads: {},
+          completedTrackIds: []
         }
         const activeDownloads = { ...(playlistState.activeDownloads || {}) }
         const completedTrackIds = [...(playlistState.completedTrackIds || [])]
-        
+
         if (data.percent >= 100) {
           delete activeDownloads[data.trackId]
           if (!completedTrackIds.includes(data.trackId)) {
@@ -206,7 +208,7 @@ export default function App(): React.JSX.Element {
       if (selectedPlaylistId === id) {
         setSelectedPlaylistId(null)
       }
-      
+
       // Unload deleted tracks from DJ decks if active
       if (loadedTrackA?.playlistId === id) setLoadedTrackA(null)
       if (loadedTrackB?.playlistId === id) setLoadedTrackB(null)
@@ -232,7 +234,7 @@ export default function App(): React.JSX.Element {
 
   // Called when a track's BPM is calculated in the background
   const handleUpdateBpmInState = (trackId: string, bpm: number) => {
-    setTracks((prev) => 
+    setTracks((prev) =>
       prev.map((t) => (t.id === trackId ? { ...t, bpm } : t))
     )
     if (loadedTrackA?.id === trackId) {
@@ -244,7 +246,7 @@ export default function App(): React.JSX.Element {
   }
 
   const handleUpdateRatingInState = (trackId: string, rating: number) => {
-    setTracks((prev) => 
+    setTracks((prev) =>
       prev.map((t) => (t.id === trackId ? { ...t, rating } : t))
     )
     if (loadedTrackA?.id === trackId) {
@@ -269,7 +271,7 @@ export default function App(): React.JSX.Element {
     const handleMouseUp = async () => {
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
-      
+
       try {
         await window.api.updateSettings({ sidebarWidth: sidebarWidthRef.current })
       } catch (err) {
@@ -319,6 +321,7 @@ export default function App(): React.JSX.Element {
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-zinc-950 text-zinc-100 font-sans antialiased">
+      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       {/* Top Half: DJ Mixer Dashboard */}
       <DjMixer
         trackA={loadedTrackA}

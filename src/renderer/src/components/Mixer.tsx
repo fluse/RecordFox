@@ -40,7 +40,7 @@ export default function Mixer({
   onMasterVolumeChange
 }: MixerProps): React.JSX.Element {
   return (
-    <div className="flex flex-col items-center justify-between border border-zinc-900 bg-zinc-950 px-4 py-4 rounded-xl shadow-lg w-[260px] select-none h-[420px]">
+    <div className="flex flex-col items-center justify-between border border-zinc-900 bg-zinc-950 px-4 py-4 rounded-xl shadow-lg w-[260px] select-none">
 
 
       {/* EQ Knobs Area */}
@@ -151,7 +151,7 @@ export default function Mixer({
       </div>
 
       {/* Crossfader */}
-      <div className="flex flex-col items-center w-full pt-4 border-t border-zinc-900/60 mt-1">
+      <div className="flex flex-col items-center w-full pt-4 pb-2 border-t border-zinc-900/60 mt-1">
         <div className="flex justify-between w-full text-[8px] font-bold text-zinc-600 px-4">
           <span>A</span>
           <span>CENTER</span>
