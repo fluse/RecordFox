@@ -27,7 +27,7 @@ export async function ensureYtdlp(onProgress?: (msg: string) => void): Promise<s
   }
 
   if (onProgress) onProgress('yt-dlp wird heruntergeladen...')
-  
+
   const url = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos'
   const response = await fetch(url)
   if (!response.ok) {
@@ -44,16 +44,16 @@ export async function ensureYtdlp(onProgress?: (msg: string) => void): Promise<s
 }
 
 export interface YtVideo {
-  id: string;
-  title: string;
-  duration: number; // in seconds
-  uploader: string;
+  id: string
+  title: string
+  duration: number // in seconds
+  uploader: string
 }
 
 export interface YtPlaylist {
-  id: string;
-  title: string;
-  entries: YtVideo[];
+  id: string
+  title: string
+  entries: YtVideo[]
 }
 
 // Fetch playlist information
@@ -61,12 +61,7 @@ export function getPlaylistInfo(playlistUrl: string): Promise<YtPlaylist> {
   return new Promise(async (resolve, reject) => {
     try {
       const ytdlpPath = await ensureYtdlp()
-      const args = [
-        '--dump-single-json',
-        '--flat-playlist',
-        '--no-warnings',
-        playlistUrl
-      ]
+      const args = ['--dump-single-json', '--flat-playlist', '--no-warnings', playlistUrl]
 
       execFile(ytdlpPath, args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
         if (error) {
@@ -130,12 +125,16 @@ export function downloadTrack(
 
       const args = [
         '-x',
-        '--audio-format', 'mp3',
-        '--audio-quality', '320k', // Highest quality
-        '--ffmpeg-location', ffmpegPath,
+        '--audio-format',
+        'mp3',
+        '--audio-quality',
+        '320k', // Highest quality
+        '--ffmpeg-location',
+        ffmpegPath,
         '--no-playlist',
         '--newline',
-        '-o', tempOutputTemplate,
+        '-o',
+        tempOutputTemplate,
         videoUrl
       ]
 

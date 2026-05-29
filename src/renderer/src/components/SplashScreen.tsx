@@ -31,7 +31,7 @@ export default function SplashScreen({ onDone }: SplashScreenProps) {
         background: '#0a0a0f',
         transition: 'opacity 0.65s cubic-bezier(0.4, 0, 0.2, 1)',
         opacity: phase === 'out' ? 0 : 1,
-        pointerEvents: phase === 'out' ? 'none' : 'all',
+        pointerEvents: phase === 'out' ? 'none' : 'all'
       }}
     >
       {/* Radial glow behind logo */}
@@ -43,7 +43,7 @@ export default function SplashScreen({ onDone }: SplashScreenProps) {
           borderRadius: '50%',
           background: 'radial-gradient(circle, rgba(109,40,217,0.22) 0%, transparent 70%)',
           filter: 'blur(40px)',
-          animation: 'rfSplashGlow 2.4s ease-in-out infinite alternate',
+          animation: 'rfSplashGlow 2.4s ease-in-out infinite alternate'
         }}
       />
 
@@ -51,7 +51,7 @@ export default function SplashScreen({ onDone }: SplashScreenProps) {
       <div
         style={{
           position: 'relative',
-          animation: 'rfSplashIn 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+          animation: 'rfSplashIn 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both'
         }}
       >
         <img
@@ -60,7 +60,7 @@ export default function SplashScreen({ onDone }: SplashScreenProps) {
           style={{
             width: 180,
             height: 180,
-            filter: 'invert(1) sepia(1) saturate(3) hue-rotate(240deg) brightness(1.15)',
+            filter: 'invert(1) sepia(1) saturate(3) hue-rotate(240deg) brightness(1.15)'
           }}
         />
       </div>
@@ -75,7 +75,7 @@ export default function SplashScreen({ onDone }: SplashScreenProps) {
           color: '#e2d9f3',
           fontFamily: '"Inter", "Segoe UI", sans-serif',
           textTransform: 'uppercase',
-          animation: 'rfSplashIn 0.75s 0.15s cubic-bezier(0.34, 1.2, 0.64, 1) both',
+          animation: 'rfSplashIn 0.75s 0.15s cubic-bezier(0.34, 1.2, 0.64, 1) both'
         }}
       >
         RecordFox
@@ -90,7 +90,7 @@ export default function SplashScreen({ onDone }: SplashScreenProps) {
           letterSpacing: '0.2em',
           fontFamily: '"Inter", "Segoe UI", sans-serif',
           textTransform: 'uppercase',
-          animation: 'rfSplashIn 0.75s 0.3s cubic-bezier(0.34, 1.2, 0.64, 1) both',
+          animation: 'rfSplashIn 0.75s 0.3s cubic-bezier(0.34, 1.2, 0.64, 1) both'
         }}
       >
         Your DJ Sync Station

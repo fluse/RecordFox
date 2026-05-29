@@ -5,6 +5,7 @@ Diese Liste enthält alle notwendigen Arbeitsschritte zur vollständigen Realisi
 ---
 
 ## Phase 1: Projekt-Setup & Infrastruktur
+
 - [x] **1.1 Electron + React Setup**
   - [x] Projekt mit Electron-Forge, Vite, React und TypeScript initialisieren.
   - [x] Ordnerstruktur festlegen (`src/main`, `src/renderer`, `src/preload`).
@@ -20,6 +21,7 @@ Diese Liste enthält alle notwendigen Arbeitsschritte zur vollständigen Realisi
 ---
 
 ## Phase 2: Main-Prozess & Background-Bibliotheken
+
 - [x] **2.1 Integration von yt-dlp & FFmpeg**
   - [x] Helper-Skript zum Ermitteln/Herunterladen der passenden `yt-dlp` und `ffmpeg` Binaries für das jeweilige OS (macOS Intel/M-Chips).
   - [x] Wrapper-Funktionen für `yt-dlp` zum Auslesen von Playlist-Metadaten (`--dump-json`) und Herunterladen von Audio.
@@ -32,6 +34,7 @@ Diese Liste enthält alle notwendigen Arbeitsschritte zur vollständigen Realisi
 ---
 
 ## Phase 3: Synchronisations- & Download-Engine (Main-Prozess)
+
 - [x] **3.1 Download-Queue & Status-IPC**
   - [x] Asynchronen Queue-Manager implementieren, der Downloads nacheinander abarbeitet.
   - [x] IPC-Event-Handler schreiben, um dem Renderer den aktuellen Download-Status zu senden (z. B. Fortschritt in Prozent).
@@ -42,6 +45,7 @@ Diese Liste enthält alle notwendigen Arbeitsschritte zur vollständigen Realisi
 ---
 
 ## Phase 4: Frontend (Renderer-Prozess) - UI-Layout
+
 - [x] **4.1 Haupt-Layout (Sidebar + Main)**
   - [x] Responsive 3-Spalten-Layout (Sidebar, Trackliste, DJ-Mixer).
   - [x] Sidebar: Liste der Playlists mit Covern, Add-Playlist-Button, Sync-Indikatoren.
@@ -54,6 +58,7 @@ Diese Liste enthält alle notwendigen Arbeitsschritte zur vollständigen Realisi
 ---
 
 ## Phase 5: DJ-Mixer & Player (Renderer-Prozess)
+
 - [x] **5.1 Web Audio API Basis-Integration**
   - [x] Globalen AudioContext initialisieren.
   - [x] Audio-Graphen pro Deck erstellen (SourceNode -> PitchNode -> BiquadFilter EQ -> Fader -> Master -> Destination).
@@ -74,6 +79,7 @@ Diese Liste enthält alle notwendigen Arbeitsschritte zur vollständigen Realisi
 ---
 
 ## Phase 6: Qualitätssicherung & Polishing
+
 - [x] **6.1 UI/UX Polishing**
   - [x] Premium-Aesthetics implementieren (Glassmorphismus, sanfte Hover-Effekte, edle Farbverläufe).
   - [x] Drag-and-Drop Unterstützung: Ziehen eines Tracks aus der Liste direkt auf Deck A oder B.
@@ -87,6 +93,7 @@ Diese Liste enthält alle notwendigen Arbeitsschritte zur vollständigen Realisi
 ---
 
 ## Phase 7: Einstellungen & Poti-Drehregler (Erweiterung)
+
 - [x] **7.1 Datenbank-Erweiterung für Einstellungen & Metadaten**
   - [x] Einstellungen-Schema (Theme, DownloadPath, SidebarWidth) in `db.ts` definieren.
   - [x] Track-Schema erweitern um `filesize`, `format` und `rating` (0 bis 5).

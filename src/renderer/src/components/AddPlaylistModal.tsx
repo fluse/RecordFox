@@ -7,7 +7,11 @@ interface AddPlaylistModalProps {
   onAdd: (url: string) => Promise<void>
 }
 
-export default function AddPlaylistModal({ isOpen, onClose, onAdd }: AddPlaylistModalProps): React.JSX.Element | null {
+export default function AddPlaylistModal({
+  isOpen,
+  onClose,
+  onAdd
+}: AddPlaylistModalProps): React.JSX.Element | null {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -41,7 +45,7 @@ export default function AddPlaylistModal({ isOpen, onClose, onAdd }: AddPlaylist
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="relative w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl">
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-200"
         >
@@ -52,9 +56,7 @@ export default function AddPlaylistModal({ isOpen, onClose, onAdd }: AddPlaylist
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-400">
-              Playlist URL
-            </label>
+            <label className="mb-1.5 block text-sm font-medium text-zinc-400">Playlist URL</label>
             <input
               type="text"
               placeholder="https://www.youtube.com/playlist?list=..."
@@ -68,9 +70,7 @@ export default function AddPlaylistModal({ isOpen, onClose, onAdd }: AddPlaylist
             />
           </div>
 
-          {error && (
-            <p className="text-xs font-medium text-red-500">{error}</p>
-          )}
+          {error && <p className="text-xs font-medium text-red-500">{error}</p>}
 
           <div className="flex justify-end gap-3 pt-2">
             <button

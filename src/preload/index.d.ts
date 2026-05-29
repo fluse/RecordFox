@@ -5,15 +5,30 @@ declare global {
     electron: any
     api: {
       getPlaylists: () => Promise<Playlist[]>
-      addPlaylist: (url: string) => Promise<{ success: boolean; playlist?: Playlist; error?: string }>
+      addPlaylist: (
+        url: string
+      ) => Promise<{ success: boolean; playlist?: Playlist; error?: string }>
       deletePlaylist: (id: string) => Promise<{ success: boolean; error?: string }>
       syncPlaylist: (id: string) => Promise<{ success: boolean; error?: string }>
       getTracks: (playlistId: string) => Promise<Track[]>
-      updateTrackBpm: (trackId: string, playlistId: string, bpm: number) => Promise<{ success: boolean; error?: string }>
-      updateTrackRating: (trackId: string, playlistId: string, rating: number) => Promise<{ success: boolean; error?: string }>
+      updateTrackBpm: (
+        trackId: string,
+        playlistId: string,
+        bpm: number
+      ) => Promise<{ success: boolean; error?: string }>
+      updateTrackRating: (
+        trackId: string,
+        playlistId: string,
+        rating: number
+      ) => Promise<{ success: boolean; error?: string }>
       getSettings: () => Promise<AppSettings>
-      updateSettings: (settings: Partial<AppSettings>) => Promise<{ success: boolean; error?: string }>
-      migrateSettings: (newPath: string, moveFiles: boolean) => Promise<{ success: boolean; error?: string }>
+      updateSettings: (
+        settings: Partial<AppSettings>
+      ) => Promise<{ success: boolean; error?: string }>
+      migrateSettings: (
+        newPath: string,
+        moveFiles: boolean
+      ) => Promise<{ success: boolean; error?: string }>
       selectDirectory: () => Promise<string | null>
       confirmMigration: () => Promise<'move' | 'change' | 'cancel'>
       openPath: (path: string) => Promise<{ success: boolean; error?: string }>
@@ -36,8 +51,16 @@ declare global {
       onKeyAnalyzed: (
         callback: (trackId: string, playlistId: string, key: string) => void
       ) => () => void
-      analyzeTrackBpm: (trackId: string, playlistId: string, filepath: string) => Promise<{ success: boolean; bpm?: number; error?: string }>
-      analyzeTrackKey: (trackId: string, playlistId: string, filepath: string) => Promise<{ success: boolean; key?: string; error?: string }>
+      analyzeTrackBpm: (
+        trackId: string,
+        playlistId: string,
+        filepath: string
+      ) => Promise<{ success: boolean; bpm?: number; error?: string }>
+      analyzeTrackKey: (
+        trackId: string,
+        playlistId: string,
+        filepath: string
+      ) => Promise<{ success: boolean; key?: string; error?: string }>
       logError: (message: string) => void
     }
   }

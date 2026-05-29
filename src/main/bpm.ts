@@ -23,14 +23,23 @@ export async function analyzeBpm(filepath: string): Promise<number> {
 /**
  * Decode audio to mono float32 PCM using FFmpeg.
  */
-function decodeToPcm(filepath: string, sampleRate: number, maxSamples: number): Promise<Float32Array> {
+function decodeToPcm(
+  filepath: string,
+  sampleRate: number,
+  maxSamples: number
+): Promise<Float32Array> {
   return new Promise((resolve, reject) => {
     const args = [
-      '-i', filepath,
-      '-f', 'f32le',
-      '-ac', '1',
-      '-ar', String(sampleRate),
-      '-t', '60',
+      '-i',
+      filepath,
+      '-f',
+      'f32le',
+      '-ac',
+      '1',
+      '-ar',
+      String(sampleRate),
+      '-t',
+      '60',
       'pipe:1'
     ]
 
@@ -101,8 +110,8 @@ function detectBpmHps(samples: Float32Array, sampleRate: number): number {
   // Candidate BPM range: 80–185 BPM (covers house, techno, drum & bass)
   // We search DOWN to 55 BPM internally so HPS can rescue the half-tempo cases.
   const fps = sampleRate / HOP // frames per second ≈ 86.1
-  const minLag = Math.max(1, Math.round(fps * 60 / 185)) // 185 BPM
-  const maxLag = Math.round(fps * 60 / 55)               // 55 BPM
+  const minLag = Math.max(1, Math.round((fps * 60) / 185)) // 185 BPM
+  const maxLag = Math.round((fps * 60) / 55) // 55 BPM
 
   const acf = new Float32Array(maxLag + 1)
 
@@ -132,8 +141,8 @@ function detectBpmHps(samples: Float32Array, sampleRate: number): number {
   //   hps[L_real] = acf[L_real] (strong) + w2*acf[2*L_real] (strong half-tempo) + ...
   //
   // Weight scheme: diminishing returns per harmonic level
-  const w2 = 0.5   // weight for 2x lag (half tempo)
-  const w3 = 0.25  // weight for 3x lag (1/3 tempo)
+  const w2 = 0.5 // weight for 2x lag (half tempo)
+  const w3 = 0.25 // weight for 3x lag (1/3 tempo)
   const w4 = 0.125 // weight for 4x lag (1/4 tempo)
 
   let bestLag = minLag

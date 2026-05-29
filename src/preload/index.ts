@@ -6,22 +6,25 @@ const api = {
   addPlaylist: (url: string) => ipcRenderer.invoke('playlists:add', url),
   deletePlaylist: (id: string) => ipcRenderer.invoke('playlists:delete', id),
   syncPlaylist: (id: string) => ipcRenderer.invoke('playlists:sync', id),
-  
+
   getTracks: (playlistId: string) => ipcRenderer.invoke('tracks:get', playlistId),
-  updateTrackBpm: (trackId: string, playlistId: string, bpm: number) => 
+  updateTrackBpm: (trackId: string, playlistId: string, bpm: number) =>
     ipcRenderer.invoke('tracks:update-bpm', trackId, playlistId, bpm),
   updateTrackRating: (trackId: string, playlistId: string, rating: number) =>
     ipcRenderer.invoke('tracks:update-rating', trackId, playlistId, rating),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   updateSettings: (settings: any) => ipcRenderer.invoke('settings:update', settings),
-  migrateSettings: (newPath: string, moveFiles: boolean) => ipcRenderer.invoke('settings:migrate', newPath, moveFiles),
+  migrateSettings: (newPath: string, moveFiles: boolean) =>
+    ipcRenderer.invoke('settings:migrate', newPath, moveFiles),
   selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
   confirmMigration: () => ipcRenderer.invoke('dialog:confirm-migration'),
   openPath: (path: string) => ipcRenderer.invoke('settings:open-path', path),
 
   // Sync / Download events listeners
-  onSyncStatusChanged: (callback: (playlistId: string, status: string, lastSync?: string) => void) => {
-    const subscription = (_event: any, playlistId: string, status: string, lastSync?: string) => 
+  onSyncStatusChanged: (
+    callback: (playlistId: string, status: string, lastSync?: string) => void
+  ) => {
+    const subscription = (_event: any, playlistId: string, status: string, lastSync?: string) =>
       callback(playlistId, status, lastSync)
     ipcRenderer.on('sync-status-changed', subscription)
     return () => {
@@ -29,14 +32,16 @@ const api = {
     }
   },
 
-  onDownloadProgress: (callback: (data: {
-    playlistId: string;
-    trackId: string;
-    title: string;
-    percent: number;
-    current: number;
-    total: number;
-  }) => void) => {
+  onDownloadProgress: (
+    callback: (data: {
+      playlistId: string
+      trackId: string
+      title: string
+      percent: number
+      current: number
+      total: number
+    }) => void
+  ) => {
     const subscription = (_event: any, data: any) => callback(data)
     ipcRenderer.on('download-progress', subscription)
     return () => {

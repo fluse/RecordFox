@@ -3,40 +3,40 @@ import { join, basename } from 'path'
 import { existsSync, writeFileSync, readFileSync, mkdirSync, copyFileSync, unlinkSync } from 'fs'
 
 export interface Playlist {
-  id: string; // YouTube playlist ID
-  title: string;
-  url: string;
-  syncStatus: 'idle' | 'syncing' | 'error';
-  lastSync: string;
+  id: string // YouTube playlist ID
+  title: string
+  url: string
+  syncStatus: 'idle' | 'syncing' | 'error'
+  lastSync: string
 }
 
 export interface Track {
-  id: string; // YouTube video ID
-  playlistId: string;
-  title: string;
-  artist: string;
-  bpm: number;
-  key: string; // Camelot notation, e.g. "8A", "10B" – empty string if not yet analyzed
-  duration: number; // in seconds
-  filepath: string; // absolute local path to MP3
-  coverPath: string; // absolute local path to Cover image
-  filesize: number; // size in bytes
-  format: string; // e.g. "MP3"
-  rating: number; // 0 to 5 stars
-  bitrate?: number; // bitrate in kbps
+  id: string // YouTube video ID
+  playlistId: string
+  title: string
+  artist: string
+  bpm: number
+  key: string // Camelot notation, e.g. "8A", "10B" – empty string if not yet analyzed
+  duration: number // in seconds
+  filepath: string // absolute local path to MP3
+  coverPath: string // absolute local path to Cover image
+  filesize: number // size in bytes
+  format: string // e.g. "MP3"
+  rating: number // 0 to 5 stars
+  bitrate?: number // bitrate in kbps
 }
 
 export interface AppSettings {
-  theme: 'dark' | 'light';
-  downloadPath: string;
-  sidebarWidth: number;
-  maxWorkers: number;
+  theme: 'dark' | 'light'
+  downloadPath: string
+  sidebarWidth: number
+  maxWorkers: number
 }
 
 interface DatabaseSchema {
-  playlists: Playlist[];
-  tracks: Track[];
-  settings?: AppSettings;
+  playlists: Playlist[]
+  tracks: Track[]
+  settings?: AppSettings
 }
 
 let dbPath = ''
@@ -84,7 +84,7 @@ export function initDb(): void {
       // Ensure arrays exist
       if (!dbData.playlists) dbData.playlists = []
       if (!dbData.tracks) dbData.tracks = []
-      
+
       // Ensure settings exist with defaults
       if (!dbData.settings) {
         dbData.settings = {
@@ -145,21 +145,24 @@ export function initDb(): void {
             if (fs.existsSync(track.filepath)) {
               const nodeId3 = require('node-id3')
               const currentTags = nodeId3.read(track.filepath)
-              
+
               if (!currentTags || !currentTags.image) {
                 if (fs.existsSync(track.coverPath)) {
-                  const playlist = dbData.playlists.find(p => p.id === track.playlistId)
+                  const playlist = dbData.playlists.find((p) => p.id === track.playlistId)
                   const albumName = playlist ? playlist.title : 'RecordFox'
                   const tags = {
                     title: track.title,
                     artist: track.artist,
                     album: albumName,
                     tbpm: track.bpm > 0 ? track.bpm.toString() : undefined,
-                    popularimeter: track.rating > 0 ? {
-                      email: 'saruman@syncer.app',
-                      rating: [0, 32, 64, 128, 196, 255][track.rating] || 0,
-                      counter: 0
-                    } : undefined,
+                    popularimeter:
+                      track.rating > 0
+                        ? {
+                            email: 'saruman@syncer.app',
+                            rating: [0, 32, 64, 128, 196, 255][track.rating] || 0,
+                            counter: 0
+                          }
+                        : undefined,
                     image: {
                       mime: 'image/jpeg',
                       type: { id: 3, name: 'front cover' },
@@ -217,18 +220,22 @@ export function getTracks(): Track[] {
 }
 
 export function getTracksForPlaylist(playlistId: string): Track[] {
-  return dbData.tracks.filter(t => t.playlistId === playlistId)
+  return dbData.tracks.filter((t) => t.playlistId === playlistId)
 }
 
 export function addPlaylist(playlist: Playlist): void {
-  if (!dbData.playlists.some(p => p.id === playlist.id)) {
+  if (!dbData.playlists.some((p) => p.id === playlist.id)) {
     dbData.playlists.push(playlist)
     saveDb()
   }
 }
 
-export function updatePlaylistStatus(playlistId: string, status: Playlist['syncStatus'], lastSync?: string): void {
-  const playlist = dbData.playlists.find(p => p.id === playlistId)
+export function updatePlaylistStatus(
+  playlistId: string,
+  status: Playlist['syncStatus'],
+  lastSync?: string
+): void {
+  const playlist = dbData.playlists.find((p) => p.id === playlistId)
   if (playlist) {
     playlist.syncStatus = status
     if (lastSync) {
@@ -239,9 +246,9 @@ export function updatePlaylistStatus(playlistId: string, status: Playlist['syncS
 }
 
 export function deletePlaylist(playlistId: string): void {
-  const tracksToDelete = dbData.tracks.filter(t => t.playlistId === playlistId)
-  dbData.playlists = dbData.playlists.filter(p => p.id !== playlistId)
-  dbData.tracks = dbData.tracks.filter(t => t.playlistId !== playlistId)
+  const tracksToDelete = dbData.tracks.filter((t) => t.playlistId === playlistId)
+  dbData.playlists = dbData.playlists.filter((p) => p.id !== playlistId)
+  dbData.tracks = dbData.tracks.filter((t) => t.playlistId !== playlistId)
   saveDb()
 
   // Physically delete track MP3 and Cover files
@@ -256,7 +263,9 @@ export function deletePlaylist(playlistId: string): void {
 }
 
 export function addTrack(track: Track): void {
-  const index = dbData.tracks.findIndex(t => t.id === track.id && t.playlistId === track.playlistId)
+  const index = dbData.tracks.findIndex(
+    (t) => t.id === track.id && t.playlistId === track.playlistId
+  )
   if (index !== -1) {
     dbData.tracks[index] = track
   } else {
@@ -266,12 +275,12 @@ export function addTrack(track: Track): void {
 }
 
 export function deleteTrack(trackId: string, playlistId: string): void {
-  dbData.tracks = dbData.tracks.filter(t => !(t.id === trackId && t.playlistId === playlistId))
+  dbData.tracks = dbData.tracks.filter((t) => !(t.id === trackId && t.playlistId === playlistId))
   saveDb()
 }
 
 export function updateTrackBpm(trackId: string, playlistId: string, bpm: number): void {
-  const track = dbData.tracks.find(t => t.id === trackId && t.playlistId === playlistId)
+  const track = dbData.tracks.find((t) => t.id === trackId && t.playlistId === playlistId)
   if (track) {
     track.bpm = bpm
     saveDb()
@@ -289,8 +298,13 @@ export function updateTrackBpm(trackId: string, playlistId: string, bpm: number)
   }
 }
 
-export function updateTrackKey(trackId: string, playlistId: string, key: string, tkey: string): void {
-  const track = dbData.tracks.find(t => t.id === trackId && t.playlistId === playlistId)
+export function updateTrackKey(
+  trackId: string,
+  playlistId: string,
+  key: string,
+  tkey: string
+): void {
+  const track = dbData.tracks.find((t) => t.id === trackId && t.playlistId === playlistId)
   if (track) {
     track.key = key
     saveDb()
@@ -308,7 +322,7 @@ export function updateTrackKey(trackId: string, playlistId: string, key: string,
 }
 
 export function updateTrackRating(trackId: string, playlistId: string, rating: number): void {
-  const track = dbData.tracks.find(t => t.id === trackId && t.playlistId === playlistId)
+  const track = dbData.tracks.find((t) => t.id === trackId && t.playlistId === playlistId)
   if (track) {
     track.rating = rating
     saveDb()
@@ -316,7 +330,7 @@ export function updateTrackRating(trackId: string, playlistId: string, rating: n
     // Write POPM frame to ID3 tags (0 to 255 rating)
     try {
       const nodeId3 = require('node-id3')
-      
+
       // Star rating POPM mapping
       // 0 -> 0, 1 -> 32, 2 -> 64, 3 -> 128, 4 -> 196, 5 -> 255
       const ratingMap = [0, 32, 64, 128, 196, 255]
@@ -338,12 +352,14 @@ export function updateTrackRating(trackId: string, playlistId: string, rating: n
 
 // Settings managers
 export function getSettings(): AppSettings {
-  return dbData.settings || {
-    theme: 'dark',
-    downloadPath: defaultDownloadsDir,
-    sidebarWidth: 256,
-    maxWorkers: 3
-  }
+  return (
+    dbData.settings || {
+      theme: 'dark',
+      downloadPath: defaultDownloadsDir,
+      sidebarWidth: 256,
+      maxWorkers: 3
+    }
+  )
 }
 
 export function updateSettings(settings: Partial<AppSettings>): void {
@@ -364,7 +380,7 @@ export async function migrateDownloadsFolder(newPath: string, moveFiles: boolean
       if (existsSync(track.filepath)) {
         const file = basename(track.filepath)
         const targetPath = join(newPath, file)
-        
+
         try {
           copyFileSync(track.filepath, targetPath)
           unlinkSync(track.filepath)
@@ -387,6 +403,6 @@ export async function migrateDownloadsFolder(newPath: string, moveFiles: boolean
   if (dbData.settings) {
     dbData.settings.downloadPath = newPath
   }
-  
+
   saveDb()
 }

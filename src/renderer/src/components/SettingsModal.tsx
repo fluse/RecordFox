@@ -35,7 +35,7 @@ export default function SettingsModal({
       if (choice === 'cancel') return
 
       setLoading(true)
-      
+
       const moveFiles = choice === 'move'
       await onMigrate(selectedPath, moveFiles)
     } catch (e: any) {
@@ -66,7 +66,7 @@ export default function SettingsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="relative w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl">
-        <button 
+        <button
           onClick={onClose}
           disabled={loading}
           className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-200 disabled:opacity-50"
@@ -81,9 +81,7 @@ export default function SettingsModal({
         <div className="space-y-6">
           {/* Theme Selector */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-zinc-400">
-              Farbschema
-            </label>
+            <label className="mb-2 block text-sm font-medium text-zinc-400">Farbschema</label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -133,7 +131,11 @@ export default function SettingsModal({
                   onClick={handleSelectFolder}
                   disabled={loading || isSyncing}
                   className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-800 hover:text-white transition disabled:opacity-50"
-                  title={isSyncing ? "Speicherort kann während der Synchronisation nicht geändert werden" : "Anderen Ordner auswählen"}
+                  title={
+                    isSyncing
+                      ? 'Speicherort kann während der Synchronisation nicht geändert werden'
+                      : 'Anderen Ordner auswählen'
+                  }
                 >
                   {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -155,7 +157,8 @@ export default function SettingsModal({
               </div>
               {isSyncing ? (
                 <p className="text-[10px] text-amber-500 font-semibold bg-amber-500/10 border border-amber-500/20 rounded p-1.5 mt-0.5 animate-pulse">
-                  ⚠️ Der Speicherort kann während einer aktiven Synchronisation nicht geändert werden.
+                  ⚠️ Der Speicherort kann während einer aktiven Synchronisation nicht geändert
+                  werden.
                 </p>
               ) : (
                 <p className="text-[10px] text-zinc-500">
@@ -168,14 +171,14 @@ export default function SettingsModal({
           {/* Concurrent Downloads / Workers Selector */}
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="text-sm font-medium text-zinc-400">
-                Gleichzeitige Downloads
-              </label>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded border ${
-                settings.theme === 'light'
-                  ? 'text-amber-600 bg-amber-600/10 border-amber-600/20'
-                  : 'text-primary bg-primary/10 border-primary/20'
-              }`}>
+              <label className="text-sm font-medium text-zinc-400">Gleichzeitige Downloads</label>
+              <span
+                className={`text-xs font-bold px-2 py-0.5 rounded border ${
+                  settings.theme === 'light'
+                    ? 'text-amber-600 bg-amber-600/10 border-amber-600/20'
+                    : 'text-primary bg-primary/10 border-primary/20'
+                }`}
+              >
                 {settings.maxWorkers || 3} Worker
               </span>
             </div>
@@ -194,7 +197,8 @@ export default function SettingsModal({
               />
             </div>
             <p className="mt-2 text-[10px] text-zinc-500">
-              Legt fest, wie viele Tracks einer Playliste gleichzeitig heruntergeladen werden (1 bis 12).
+              Legt fest, wie viele Tracks einer Playliste gleichzeitig heruntergeladen werden (1 bis
+              12).
             </p>
           </div>
 

@@ -10,7 +10,7 @@ export function getMediaUrl(filepath: string): string {
 // Decode audio file and compute BPM using music-tempo
 export async function calculateBpm(filepath: string): Promise<number> {
   const url = getMediaUrl(filepath)
-  
+
   // 1. Fetch the file data
   const response = await fetch(url)
   if (!response.ok) {
@@ -21,17 +21,17 @@ export async function calculateBpm(filepath: string): Promise<number> {
   // 2. Decode the audio data using OfflineAudioContext (bypasses autoplay policy and hardware limits)
   const offlineCtx = new OfflineAudioContext(1, 44100 * 30, 44100)
   const audioBuffer = await offlineCtx.decodeAudioData(arrayBuffer)
-  
+
   // We only need one channel for beat detection (mono is fine)
   const channelData = audioBuffer.getChannelData(0)
 
   // Slice to first 60 seconds to speed up analysis and prevent thread blocking
   const sliceLength = Math.min(channelData.length, 44100 * 60)
   const slicedData = channelData.slice(0, sliceLength)
-  
+
   // Run music-tempo beat detection
   const mt = new MusicTempo(slicedData)
-  
+
   // Return rounded tempo
   return Math.round(mt.tempo)
 }

@@ -11,12 +11,15 @@ interface SidebarProps {
   onSyncPlaylist: (id: string) => void
   onOpenAddModal: () => void
   onOpenSettings: () => void
-  activeSyncs: Record<string, {
-    status: string;
-    total?: number;
-    completedTrackIds?: string[];
-    activeDownloads?: Record<string, { trackId: string; title: string; percent: number }>;
-  }>
+  activeSyncs: Record<
+    string,
+    {
+      status: string
+      total?: number
+      completedTrackIds?: string[]
+      activeDownloads?: Record<string, { trackId: string; title: string; percent: number }>
+    }
+  >
   width?: number
 }
 
@@ -32,7 +35,7 @@ export default function Sidebar({
   width
 }: SidebarProps): React.JSX.Element {
   return (
-    <div 
+    <div
       className="flex h-full flex-col border-r border-zinc-900 bg-zinc-950/80 backdrop-blur-md"
       style={{ width: width ? `${width}px` : '256px', minWidth: width ? `${width}px` : '256px' }}
     >
@@ -68,16 +71,14 @@ export default function Sidebar({
                 key={playlist.id}
                 onClick={() => onSelectPlaylist(playlist.id)}
                 className={`group relative flex flex-col rounded-lg px-3 py-2.5 transition cursor-pointer ${
-                  isSelected 
-                    ? 'bg-zinc-900 text-zinc-100' 
+                  isSelected
+                    ? 'bg-zinc-900 text-zinc-100'
                     : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="truncate pr-8 font-medium text-sm">
-                    {playlist.title}
-                  </div>
-                  
+                  <div className="truncate pr-8 font-medium text-sm">{playlist.title}</div>
+
                   {/* Status Indicator */}
                   <div className="absolute right-3 top-3 flex items-center gap-1.5">
                     {syncState.status === 'syncing' ? (
@@ -103,14 +104,21 @@ export default function Sidebar({
                           </span>
                         </div>
                         <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
-                          <div 
+                          <div
                             className="h-full bg-primary transition-all duration-300"
-                            style={{ 
-                              width: `${Math.min(100, Math.floor(
-                                (((syncState.completedTrackIds?.length || 0) + 
-                                  Object.values(syncState.activeDownloads || {}).reduce((sum, dl: any) => sum + (dl.percent / 100), 0)
-                                ) / syncState.total) * 100
-                              ))}%` 
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                Math.floor(
+                                  (((syncState.completedTrackIds?.length || 0) +
+                                    Object.values(syncState.activeDownloads || {}).reduce(
+                                      (sum, dl: any) => sum + dl.percent / 100,
+                                      0
+                                    )) /
+                                    syncState.total) *
+                                    100
+                                )
+                              )}%`
                             }}
                           />
                         </div>
@@ -122,33 +130,35 @@ export default function Sidebar({
                     )}
 
                     {/* Active Parallel Worker Downloads List */}
-                    {syncState.activeDownloads && Object.keys(syncState.activeDownloads).length > 0 && (
-                      <div className="mt-1 space-y-1.5 border-t border-zinc-900/60 pt-1.5">
-                        {Object.values(syncState.activeDownloads).map((dl: any) => (
-                          <div key={dl.trackId} className="space-y-0.5">
-                            <div className="flex items-center justify-between text-[9px] text-zinc-500">
-                              <span className="truncate max-w-[150px]" title={dl.title}>
-                                ⬇️ {dl.title}
-                              </span>
-                              <span className="font-mono text-zinc-400 font-bold">
-                                {dl.percent}%
-                              </span>
+                    {syncState.activeDownloads &&
+                      Object.keys(syncState.activeDownloads).length > 0 && (
+                        <div className="mt-1 space-y-1.5 border-t border-zinc-900/60 pt-1.5">
+                          {Object.values(syncState.activeDownloads).map((dl: any) => (
+                            <div key={dl.trackId} className="space-y-0.5">
+                              <div className="flex items-center justify-between text-[9px] text-zinc-500">
+                                <span className="truncate max-w-[150px]" title={dl.title}>
+                                  ⬇️ {dl.title}
+                                </span>
+                                <span className="font-mono text-zinc-400 font-bold">
+                                  {dl.percent}%
+                                </span>
+                              </div>
+                              <div className="h-0.5 w-full rounded-full bg-zinc-900/60 overflow-hidden">
+                                <div
+                                  className="h-full bg-purple-500 transition-all duration-200"
+                                  style={{ width: `${dl.percent}%` }}
+                                />
+                              </div>
                             </div>
-                            <div className="h-0.5 w-full rounded-full bg-zinc-900/60 overflow-hidden">
-                              <div 
-                                className="h-full bg-purple-500 transition-all duration-200"
-                                style={{ width: `${dl.percent}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </div>
+                      )}
                   </div>
                 ) : (
                   playlist.lastSync && (
                     <div className="mt-0.5 text-[10px] text-zinc-600">
-                      Sync: {(() => {
+                      Sync:{' '}
+                      {(() => {
                         const d = new Date(playlist.lastSync)
                         if (isNaN(d.getTime())) return ''
                         const pad = (n: number) => String(n).padStart(2, '0')
@@ -186,7 +196,11 @@ export default function Sidebar({
 
           {playlists.length === 0 && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
-              <img src={logo} className="h-8 w-8 object-contain opacity-20 dark:invert" alt="Keine Playlists" />
+              <img
+                src={logo}
+                className="h-8 w-8 object-contain opacity-20 dark:invert"
+                alt="Keine Playlists"
+              />
               <p className="mt-2 text-xs text-zinc-600">Keine Playlists</p>
               <button
                 onClick={onOpenAddModal}

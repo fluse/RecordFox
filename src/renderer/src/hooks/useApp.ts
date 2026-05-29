@@ -1,0 +1,371 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import type { Playlist, Track, AppSettings } from '@main/db'
+
+export interface ActiveSync {
+  status: string
+  total?: number
+  completedTrackIds?: string[]
+  activeDownloads?: Record<string, { trackId: string; title: string; percent: number }>
+}
+
+export type ActiveSyncsMap = Record<string, ActiveSync>
+
+export interface UseAppReturn {
+  playlists: Playlist[]
+  selectedPlaylistId: string | null
+  setSelectedPlaylistId: (id: string | null) => void
+  tracks: Track[]
+  loadedTrackA: Track | null
+  loadedTrackB: Track | null
+  settings: AppSettings
+  sidebarWidth: number
+  activeSyncs: ActiveSyncsMap
+  handleAddPlaylist: (url: string) => Promise<void>
+  handleDeletePlaylist: (id: string) => Promise<void>
+  handleSyncPlaylist: (id: string) => Promise<void>
+  handleLoadTrack: (track: Track, deck: 'A' | 'B') => void
+  handleUpdateBpmInState: (trackId: string, bpm: number) => void
+  handleUpdateKeyInState: (trackId: string, key: string) => void
+  handleUpdateRatingInState: (trackId: string, rating: number) => void
+  handleUpdateSettings: (newSettings: Partial<AppSettings>) => Promise<void>
+  handleMigrate: (newPath: string, moveFiles: boolean) => Promise<void>
+  handleMouseDownSplitter: (e: React.MouseEvent) => void
+}
+
+export function useApp(): UseAppReturn {
+  const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null)
+  const [tracks, setTracks] = useState<Track[]>([])
+
+  // Track loaded on Deck A / Deck B
+  const [loadedTrackA, setLoadedTrackA] = useState<Track | null>(null)
+  const [loadedTrackB, setLoadedTrackB] = useState<Track | null>(null)
+
+  // App settings state
+  const [settings, setSettings] = useState<AppSettings>({
+    theme: 'dark',
+    downloadPath: '',
+    sidebarWidth: 256,
+    maxWorkers: 3
+  })
+  const [sidebarWidth, setSidebarWidth] = useState(256)
+  const sidebarWidthRef = useRef<number>(sidebarWidth)
+
+  useEffect((): void => {
+    sidebarWidthRef.current = sidebarWidth
+  }, [sidebarWidth])
+
+  // Real-time synchronization state map
+  const [activeSyncs, setActiveSyncs] = useState<ActiveSyncsMap>({})
+
+  // Called when a track's BPM is calculated in the background
+  const handleUpdateBpmInState = useCallback((trackId: string, bpm: number): void => {
+    setTracks((prev) => prev.map((t) => (t.id === trackId ? { ...t, bpm } : t)))
+    setLoadedTrackA((prev) => (prev && prev.id === trackId ? { ...prev, bpm } : prev))
+    setLoadedTrackB((prev) => (prev && prev.id === trackId ? { ...prev, bpm } : prev))
+  }, [])
+
+  // Called when a track's key is analyzed in the background
+  const handleUpdateKeyInState = useCallback((trackId: string, key: string): void => {
+    setTracks((prev) => prev.map((t) => (t.id === trackId ? { ...t, key } : t)))
+    setLoadedTrackA((prev) => (prev && prev.id === trackId ? { ...prev, key } : prev))
+    setLoadedTrackB((prev) => (prev && prev.id === trackId ? { ...prev, key } : prev))
+  }, [])
+
+  const handleUpdateRatingInState = useCallback((trackId: string, rating: number): void => {
+    setTracks((prev) => prev.map((t) => (t.id === trackId ? { ...t, rating } : t)))
+    setLoadedTrackA((prev) => (prev && prev.id === trackId ? { ...prev, rating } : prev))
+    setLoadedTrackB((prev) => (prev && prev.id === trackId ? { ...prev, rating } : prev))
+  }, [])
+
+  const handleLoadTrack = useCallback((track: Track, deck: 'A' | 'B'): void => {
+    if (deck === 'A') {
+      setLoadedTrackA(track)
+    } else {
+      setLoadedTrackB(track)
+    }
+  }, [])
+
+  const handleAddPlaylist = useCallback(async (url: string): Promise<void> => {
+    const res = await window.api.addPlaylist(url)
+    if (res.success && res.playlist) {
+      setPlaylists((prev) => [...prev, res.playlist!])
+      setSelectedPlaylistId(res.playlist.id)
+    } else {
+      throw new Error(res.error || 'Failed to add playlist')
+    }
+  }, [])
+
+  const handleDeletePlaylist = useCallback(async (id: string): Promise<void> => {
+    if (
+      !confirm('Möchtest du diese Playlist und alle dazugehörigen lokalen MP3s wirklich löschen?')
+    ) {
+      return
+    }
+
+    const res = await window.api.deletePlaylist(id)
+    if (res.success) {
+      setPlaylists((prev) => prev.filter((p) => p.id !== id))
+      setSelectedPlaylistId((prevSelected) => (prevSelected === id ? null : prevSelected))
+
+      // Unload deleted tracks from DJ decks if active
+      setLoadedTrackA((prev) => (prev?.playlistId === id ? null : prev))
+      setLoadedTrackB((prev) => (prev?.playlistId === id ? null : prev))
+    } else {
+      alert(`Fehler beim Löschen: ${res.error}`)
+    }
+  }, [])
+
+  const handleSyncPlaylist = useCallback(async (id: string): Promise<void> => {
+    const res = await window.api.syncPlaylist(id)
+    if (!res.success) {
+      alert(`Fehler beim Synchronisieren: ${res.error}`)
+    }
+  }, [])
+
+  const handleUpdateSettings = useCallback(
+    async (newSettings: Partial<AppSettings>): Promise<void> => {
+      try {
+        const res = await window.api.updateSettings(newSettings)
+        if (res.success) {
+          setSettings((prev) => ({ ...prev, ...newSettings }))
+        } else {
+          alert(`Fehler beim Aktualisieren der Einstellungen: ${res.error}`)
+        }
+      } catch (err) {
+        console.error(err)
+        alert('Fehler beim Aktualisieren der Einstellungen.')
+      }
+    },
+    []
+  )
+
+  const handleMigrate = useCallback(async (newPath: string, moveFiles: boolean): Promise<void> => {
+    try {
+      const res = await window.api.migrateSettings(newPath, moveFiles)
+      if (res.success) {
+        setSettings((prev) => ({ ...prev, downloadPath: newPath }))
+        // Refresh tracks to get the updated local filepaths
+        setSelectedPlaylistId((currentPlaylistId) => {
+          if (currentPlaylistId) {
+            window.api.getTracks(currentPlaylistId).then(setTracks).catch(console.error)
+          }
+          return currentPlaylistId
+        })
+        alert('Speicherort erfolgreich geändert und Dateien ggf. verschoben!')
+      } else {
+        alert(`Fehler bei der Migration: ${res.error}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Fehler bei der Migration.')
+    }
+  }, [])
+
+  const handleMouseDownSplitter = useCallback((e: React.MouseEvent): void => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startWidth = sidebarWidthRef.current
+
+    const handleMouseMove = (moveEvent: MouseEvent): void => {
+      const deltaX = moveEvent.clientX - startX
+      const newWidth = Math.max(180, Math.min(480, startWidth + deltaX))
+      setSidebarWidth(newWidth)
+    }
+
+    const handleMouseUp = async (): Promise<void> => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+
+      try {
+        await window.api.updateSettings({ sidebarWidth: sidebarWidthRef.current })
+      } catch (err) {
+        console.error('Failed to save sidebar width settings:', err)
+      }
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+  }, [])
+
+  // 1. Fetch playlists on startup and load settings
+  useEffect((): void => {
+    const fetchPlaylists = async (): Promise<void> => {
+      try {
+        const list = await window.api.getPlaylists()
+        setPlaylists(list)
+        if (list.length > 0) {
+          setSelectedPlaylistId(list[0].id)
+        }
+      } catch (e) {
+        console.error('Failed to load playlists:', e)
+      }
+    }
+    const loadSettings = async (): Promise<void> => {
+      try {
+        const currentSettings = await window.api.getSettings()
+        setSettings(currentSettings)
+        if (currentSettings.sidebarWidth) {
+          setSidebarWidth(currentSettings.sidebarWidth)
+        }
+      } catch (e) {
+        console.error('Failed to load settings:', e)
+      }
+    }
+    fetchPlaylists()
+    loadSettings()
+  }, [])
+
+  // 2. Inject theme class into HTML document root
+  useEffect((): void => {
+    const root = document.documentElement
+    if (settings.theme === 'light') {
+      root.classList.remove('dark')
+      root.classList.add('light')
+    } else {
+      root.classList.remove('light')
+      root.classList.add('dark')
+    }
+  }, [settings.theme])
+
+  // 3. Fetch tracks when selected playlist changes
+  useEffect((): void => {
+    if (!selectedPlaylistId) {
+      Promise.resolve().then(() => {
+        setTracks((prev) => (prev.length > 0 ? [] : prev))
+      })
+      return
+    }
+
+    const fetchTracks = async (): Promise<void> => {
+      try {
+        const list = await window.api.getTracks(selectedPlaylistId)
+        setTracks(list)
+      } catch (e) {
+        console.error(`Failed to load tracks for playlist ${selectedPlaylistId}:`, e)
+      }
+    }
+
+    fetchTracks()
+  }, [selectedPlaylistId])
+
+  // 4. Register IPC event listeners
+  useEffect((): (() => void) => {
+    // Listen for sync status changes
+    const cleanupSyncStatus = window.api.onSyncStatusChanged((playlistId, status, lastSync) => {
+      setPlaylists((prev) =>
+        prev.map((p) => {
+          if (p.id === playlistId) {
+            return {
+              ...p,
+              syncStatus: status as Playlist['syncStatus'],
+              lastSync: lastSync || p.lastSync
+            }
+          }
+          return p
+        })
+      )
+
+      setActiveSyncs((prev) => {
+        const next = { ...prev }
+        if (status === 'idle' || status === 'error') {
+          delete next[playlistId] // Clean up sync progress
+        } else {
+          next[playlistId] = {
+            ...next[playlistId],
+            status,
+            total: next[playlistId]?.total || 0,
+            completedTrackIds: next[playlistId]?.completedTrackIds || [],
+            activeDownloads: next[playlistId]?.activeDownloads || {}
+          }
+        }
+        return next
+      })
+
+      // Refresh track list if the active playlist status changes (starts syncing or finishes)
+      if (playlistId === selectedPlaylistId) {
+        window.api.getTracks(playlistId).then(setTracks).catch(console.error)
+      }
+    })
+
+    // Listen for download progress updates
+    const cleanupDownloadProgress = window.api.onDownloadProgress((data) => {
+      setActiveSyncs((prev) => {
+        const playlistState = prev[data.playlistId] || {
+          status: 'syncing',
+          activeDownloads: {},
+          completedTrackIds: []
+        }
+        const activeDownloads = { ...(playlistState.activeDownloads || {}) }
+        const completedTrackIds = [...(playlistState.completedTrackIds || [])]
+
+        if (data.percent >= 100) {
+          delete activeDownloads[data.trackId]
+          if (!completedTrackIds.includes(data.trackId)) {
+            completedTrackIds.push(data.trackId)
+          }
+        } else {
+          activeDownloads[data.trackId] = {
+            trackId: data.trackId,
+            title: data.title,
+            percent: data.percent
+          }
+        }
+
+        return {
+          ...prev,
+          [data.playlistId]: {
+            status: 'syncing',
+            total: data.total,
+            completedTrackIds,
+            activeDownloads
+          }
+        }
+      })
+
+      // Reload tracklist if a track finishes downloading
+      if (data.percent >= 100 && data.playlistId === selectedPlaylistId) {
+        window.api.getTracks(data.playlistId).then(setTracks).catch(console.error)
+      }
+    })
+
+    // Listen for BPM analysis results from the main process
+    const cleanupBpmAnalyzed = window.api.onBpmAnalyzed((trackId, _playlistId, bpm) => {
+      handleUpdateBpmInState(trackId, bpm)
+    })
+
+    // Listen for Key analysis results from the main process
+    const cleanupKeyAnalyzed = window.api.onKeyAnalyzed((trackId, _playlistId, key) => {
+      handleUpdateKeyInState(trackId, key)
+    })
+
+    return (): void => {
+      cleanupSyncStatus()
+      cleanupDownloadProgress()
+      cleanupBpmAnalyzed()
+      cleanupKeyAnalyzed()
+    }
+  }, [selectedPlaylistId, handleUpdateBpmInState, handleUpdateKeyInState])
+
+  return {
+    playlists,
+    selectedPlaylistId,
+    setSelectedPlaylistId,
+    tracks,
+    loadedTrackA,
+    loadedTrackB,
+    settings,
+    sidebarWidth,
+    activeSyncs,
+    handleAddPlaylist,
+    handleDeletePlaylist,
+    handleSyncPlaylist,
+    handleLoadTrack,
+    handleUpdateBpmInState,
+    handleUpdateKeyInState,
+    handleUpdateRatingInState,
+    handleUpdateSettings,
+    handleMigrate,
+    handleMouseDownSplitter
+  }
+}

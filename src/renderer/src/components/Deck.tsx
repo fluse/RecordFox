@@ -107,7 +107,7 @@ export default function Deck({
     // Configure EQs
     filterLowRef.current.type = 'lowshelf'
     filterLowRef.current.frequency.value = 250
-    
+
     filterMidRef.current.type = 'peaking'
     filterMidRef.current.frequency.value = 1000
     filterMidRef.current.Q.value = 1.0
@@ -136,7 +136,7 @@ export default function Deck({
     const onPause = () => setIsPlaying(false)
     const onTimeUpdate = () => {
       setCurrentTime(audio.currentTime)
-      
+
       // Handle Loop
       if (loopStart !== null && loopEnd !== null) {
         if (audio.currentTime >= loopEnd) {
@@ -166,7 +166,7 @@ export default function Deck({
       audio.removeEventListener('loadedmetadata', onLoadedMetadata)
       audio.removeEventListener('ended', onEnded)
       audio.pause()
-      
+
       // Disconnect Nodes
       try {
         sourceNodeRef.current?.disconnect()
@@ -200,9 +200,12 @@ export default function Deck({
   }, [eqHighVal])
 
   const setEqNode = (type: 'low' | 'mid' | 'high', dB: number) => {
-    const node = 
-      type === 'low' ? filterLowRef.current : 
-      type === 'mid' ? filterMidRef.current : filterHighRef.current
+    const node =
+      type === 'low'
+        ? filterLowRef.current
+        : type === 'mid'
+          ? filterMidRef.current
+          : filterHighRef.current
     if (node) {
       // mapping -12 to 12 range
       node.gain.setValueAtTime(dB, audioContext?.currentTime || 0)
@@ -236,11 +239,11 @@ export default function Deck({
         const url = getMediaUrl(track.filepath)
         const response = await fetch(url)
         const arrayBuffer = await response.arrayBuffer()
-        
+
         // Decode offscreen
         const offlineContext = new OfflineAudioContext(1, 44100 * 30, 44100) // decode up to first 30 seconds for detail, or more
         const audioBuffer = await offlineContext.decodeAudioData(arrayBuffer)
-        
+
         const channelData = audioBuffer.getChannelData(0)
         const step = Math.ceil(channelData.length / 500) // 500 bars
         const generatedPeaks: number[] = []
@@ -276,7 +279,7 @@ export default function Deck({
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      
+
       const width = canvas.width
       const height = canvas.height
       const centerY = height / 2
@@ -303,7 +306,7 @@ export default function Deck({
 
         for (let i = start; i < end; i++) {
           const x = ((i - start) / span) * width
-          
+
           let peakValue = 0
           if (i >= 0 && i < peaks.length) {
             peakValue = peaks[i]
@@ -330,7 +333,7 @@ export default function Deck({
           const startX = ((startIdx - start) / span) * width
 
           ctx.fillStyle = 'rgba(168, 85, 247, 0.2)' // purple overlay
-          
+
           if (loopEnd !== null) {
             const endProgress = loopEnd / duration
             const endIdx = Math.floor(endProgress * peaks.length)
@@ -376,7 +379,7 @@ export default function Deck({
   // Play / Pause
   const togglePlay = async () => {
     if (!audioRef.current || !track) return
-    
+
     // Resume context if suspended (browser security)
     if (audioContext && audioContext.state === 'suspended') {
       await audioContext.resume()
@@ -385,7 +388,7 @@ export default function Deck({
     if (isPlaying) {
       audioRef.current.pause()
     } else {
-      audioRef.current.play().catch(e => console.error(e))
+      audioRef.current.play().catch((e) => console.error(e))
     }
   }
 
@@ -466,14 +469,12 @@ export default function Deck({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={`flex flex-col border p-4 rounded-xl shadow-lg relative select-none w-[420px] transition-all duration-200 ${
-        isDragOver 
-          ? deckId === 'A' 
-            ? 'border-primary ring-2 ring-primary/20 bg-primary/5 scale-[1.01]' 
-            : 'border-purple-600 ring-2 ring-purple-600/20 bg-purple-600/5 scale-[1.01]' 
+        isDragOver
+          ? deckId === 'A'
+            ? 'border-primary ring-2 ring-primary/20 bg-primary/5 scale-[1.01]'
+            : 'border-purple-600 ring-2 ring-purple-600/20 bg-purple-600/5 scale-[1.01]'
           : 'border-zinc-900 bg-zinc-950'
-      } ${
-        deckId === 'A' ? 'border-l-primary/30' : 'border-r-primary/30'
-      }`}
+      } ${deckId === 'A' ? 'border-l-primary/30' : 'border-r-primary/30'}`}
     >
       {/* Deck Header Info */}
       <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
@@ -484,9 +485,7 @@ export default function Deck({
           <div className="text-sm font-bold text-zinc-200 truncate">
             {track ? track.title : 'Kein Track geladen'}
           </div>
-          <div className="text-xs text-zinc-500 truncate">
-            {track ? track.artist : '---'}
-          </div>
+          <div className="text-xs text-zinc-500 truncate">{track ? track.artist : '---'}</div>
         </div>
 
         {/* BPM & TIME Info */}
@@ -509,10 +508,10 @@ export default function Deck({
 
       {/* Waveform Screen */}
       <div className="relative my-3 h-20 w-full overflow-hidden rounded-lg bg-zinc-900/50 border border-zinc-900">
-        <canvas 
-          ref={canvasRef} 
-          width={400} 
-          height={80} 
+        <canvas
+          ref={canvasRef}
+          width={400}
+          height={80}
           className="absolute inset-0 h-full w-full"
         />
         {/* Timing Overlay */}
@@ -523,7 +522,6 @@ export default function Deck({
 
       {/* Controls: Play/Pause, Cue, Loop, Pitch */}
       <div className="grid grid-cols-12 gap-3 pt-2">
-        
         {/* LEFT COLUMN: Play, Cue, Sync */}
         <div className="col-span-8 space-y-3">
           <div className="flex gap-2">
@@ -531,8 +529,8 @@ export default function Deck({
               onClick={togglePlay}
               disabled={!track}
               className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 font-bold transition duration-150 ${
-                isPlaying 
-                  ? 'bg-zinc-800 text-primary hover:bg-zinc-700' 
+                isPlaying
+                  ? 'bg-zinc-800 text-primary hover:bg-zinc-700'
                   : 'bg-primary text-white hover:bg-primary/95 shadow-md shadow-primary/10'
               } disabled:opacity-30`}
             >
@@ -588,8 +586,8 @@ export default function Deck({
                     onClick={() => handleBeatLoop(beats)}
                     disabled={!track || !track.bpm}
                     className={`flex-1 text-xs font-bold py-1.5 rounded transition ${
-                      isCurrent 
-                        ? 'bg-primary text-white font-black' 
+                      isCurrent
+                        ? 'bg-primary text-white font-black'
                         : 'bg-zinc-900 text-zinc-400 border border-zinc-900 hover:bg-zinc-800 hover:text-zinc-200'
                     } disabled:opacity-30`}
                   >
@@ -623,8 +621,8 @@ export default function Deck({
             onClick={toggleKeyLock}
             disabled={!track}
             className={`mt-2 flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold transition ${
-              keyLock 
-                ? 'bg-zinc-900 text-primary border border-primary/30' 
+              keyLock
+                ? 'bg-zinc-900 text-primary border border-primary/30'
                 : 'bg-zinc-950 text-zinc-500 border border-zinc-900'
             } disabled:opacity-30`}
           >
@@ -639,7 +637,6 @@ export default function Deck({
             )}
           </button>
         </div>
-
       </div>
     </div>
   )

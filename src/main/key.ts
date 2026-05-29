@@ -5,7 +5,7 @@ import ffmpegPath from '@ffmpeg-installer/ffmpeg'
 // These represent the perceptual salience of each pitch class in a key.
 // Major and minor profiles from Krumhansl (1990), "Cognitive Foundations of Musical Pitch".
 const KS_MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
-const KS_MINOR = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
+const KS_MINOR = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
 
 // ─── Note name mapping (12 pitch classes starting at C) ──────────────────────
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -13,34 +13,58 @@ const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 
 // ─── Camelot Wheel ──────────────────────────────────────────────────────────
 // Maps "<root> <mode>" → Camelot code (used by Rekordbox, Mixed In Key, etc.)
 const CAMELOT: Record<string, string> = {
-  'C major':  '8B',  'A minor':  '8A',
-  'G major':  '9B',  'E minor':  '9A',
-  'D major':  '10B', 'B minor':  '10A',
-  'A major':  '11B', 'F# minor': '11A',
-  'E major':  '12B', 'C# minor': '12A',
-  'B major':  '1B',  'G# minor': '1A',
-  'F# major': '2B',  'D# minor': '2A',
-  'C# major': '3B',  'A# minor': '3A',
-  'G# major': '4B',  'F minor':  '4A',
-  'D# major': '5B',  'C minor':  '5A',
-  'A# major': '6B',  'G minor':  '6A',
-  'F major':  '7B',  'D minor':  '7A',
+  'C major': '8B',
+  'A minor': '8A',
+  'G major': '9B',
+  'E minor': '9A',
+  'D major': '10B',
+  'B minor': '10A',
+  'A major': '11B',
+  'F# minor': '11A',
+  'E major': '12B',
+  'C# minor': '12A',
+  'B major': '1B',
+  'G# minor': '1A',
+  'F# major': '2B',
+  'D# minor': '2A',
+  'C# major': '3B',
+  'A# minor': '3A',
+  'G# major': '4B',
+  'F minor': '4A',
+  'D# major': '5B',
+  'C minor': '5A',
+  'A# major': '6B',
+  'G minor': '6A',
+  'F major': '7B',
+  'D minor': '7A'
 }
 
 // Standard ID3-TKEY notation (e.g. "Am", "F#m", "C") for writing to MP3 tags
 const TKEY_NOTATION: Record<string, string> = {
-  'C major': 'C',   'A minor': 'Am',
-  'G major': 'G',   'E minor': 'Em',
-  'D major': 'D',   'B minor': 'Bm',
-  'A major': 'A',   'F# minor': 'F#m',
-  'E major': 'E',   'C# minor': 'C#m',
-  'B major': 'B',   'G# minor': 'G#m',
-  'F# major': 'F#', 'D# minor': 'D#m',
-  'C# major': 'C#', 'A# minor': 'A#m',
-  'G# major': 'G#', 'F minor': 'Fm',
-  'D# major': 'D#', 'C minor': 'Cm',
-  'A# major': 'A#', 'G minor': 'Gm',
-  'F major': 'F',   'D minor': 'Dm',
+  'C major': 'C',
+  'A minor': 'Am',
+  'G major': 'G',
+  'E minor': 'Em',
+  'D major': 'D',
+  'B minor': 'Bm',
+  'A major': 'A',
+  'F# minor': 'F#m',
+  'E major': 'E',
+  'C# minor': 'C#m',
+  'B major': 'B',
+  'G# minor': 'G#m',
+  'F# major': 'F#',
+  'D# minor': 'D#m',
+  'C# major': 'C#',
+  'A# minor': 'A#m',
+  'G# major': 'G#',
+  'F minor': 'Fm',
+  'D# major': 'D#',
+  'C minor': 'Cm',
+  'A# major': 'A#',
+  'G minor': 'Gm',
+  'F major': 'F',
+  'D minor': 'Dm'
 }
 
 /**
@@ -75,14 +99,23 @@ export async function analyzeKey(filepath: string): Promise<{ camelot: string; t
 
 // ─── FFmpeg PCM Decoder (reusable) ───────────────────────────────────────────
 
-function decodeToPcm(filepath: string, sampleRate: number, maxSamples: number): Promise<Float32Array> {
+function decodeToPcm(
+  filepath: string,
+  sampleRate: number,
+  maxSamples: number
+): Promise<Float32Array> {
   return new Promise((resolve, reject) => {
     const args = [
-      '-i', filepath,
-      '-f', 'f32le',
-      '-ac', '1',
-      '-ar', String(sampleRate),
-      '-t', '60',
+      '-i',
+      filepath,
+      '-f',
+      'f32le',
+      '-ac',
+      '1',
+      '-ar',
+      String(sampleRate),
+      '-t',
+      '60',
       'pipe:1'
     ]
 
@@ -123,7 +156,9 @@ function goertzel(samples: Float32Array, targetFreq: number, sampleRate: number)
   const omega = 2 * Math.PI * normalizedFreq
   const coeff = 2 * Math.cos(omega)
 
-  let q0 = 0, q1 = 0, q2 = 0
+  let q0 = 0,
+    q1 = 0,
+    q2 = 0
   for (let i = 0; i < N; i++) {
     q0 = coeff * q1 - q2 + samples[i]
     q2 = q1
@@ -145,7 +180,7 @@ function computeChroma(samples: Float32Array, sampleRate: number): Float64Array 
 
   // Analyze in overlapping blocks for temporal averaging
   const BLOCK = 8192
-  const HOP   = 4096
+  const HOP = 4096
   const OCTAVES = [0, 1, 2, 3, 4] // C2–B6
 
   const chroma = new Float64Array(12)
@@ -183,11 +218,15 @@ function computeChroma(samples: Float32Array, sampleRate: number): Float64Array 
  */
 function pearson(a: ArrayLike<number>, b: number[]): number {
   const n = Math.min(a.length, b.length)
-  let sumA = 0, sumB = 0, sumAB = 0, sumA2 = 0, sumB2 = 0
+  let sumA = 0,
+    sumB = 0,
+    sumAB = 0,
+    sumA2 = 0,
+    sumB2 = 0
 
   for (let i = 0; i < n; i++) {
-    sumA  += a[i]
-    sumB  += b[i]
+    sumA += a[i]
+    sumB += b[i]
     sumAB += a[i] * b[i]
     sumA2 += a[i] * a[i]
     sumB2 += b[i] * b[i]
@@ -195,8 +234,8 @@ function pearson(a: ArrayLike<number>, b: number[]): number {
 
   const meanA = sumA / n
   const meanB = sumB / n
-  const num   = sumAB - n * meanA * meanB
-  const den   = Math.sqrt((sumA2 - n * meanA * meanA) * (sumB2 - n * meanB * meanB))
+  const num = sumAB - n * meanA * meanB
+  const den = Math.sqrt((sumA2 - n * meanA * meanA) * (sumB2 - n * meanB * meanB))
 
   return den === 0 ? 0 : num / den
 }
@@ -209,7 +248,7 @@ function detectKey(samples: Float32Array, sampleRate: number): { camelot: string
   const chroma = computeChroma(samples, sampleRate)
 
   let bestLabel = 'C major'
-  let bestCorr  = -Infinity
+  let bestCorr = -Infinity
 
   for (let root = 0; root < 12; root++) {
     // Rotate profiles so index 0 = root
@@ -222,17 +261,17 @@ function detectKey(samples: Float32Array, sampleRate: number): { camelot: string
     const noteName = NOTE_NAMES[root]
 
     if (corrMajor > bestCorr) {
-      bestCorr  = corrMajor
+      bestCorr = corrMajor
       bestLabel = `${noteName} major`
     }
     if (corrMinor > bestCorr) {
-      bestCorr  = corrMinor
+      bestCorr = corrMinor
       bestLabel = `${noteName} minor`
     }
   }
 
   return {
-    camelot: CAMELOT[bestLabel]  ?? '',
-    tkey:    TKEY_NOTATION[bestLabel] ?? ''
+    camelot: CAMELOT[bestLabel] ?? '',
+    tkey: TKEY_NOTATION[bestLabel] ?? ''
   }
 }

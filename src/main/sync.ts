@@ -1,14 +1,14 @@
 import { BrowserWindow } from 'electron'
 import { join } from 'path'
 import { existsSync, unlinkSync } from 'fs'
-import { 
-  Playlist, 
-  Track, 
-  addTrack, 
-  deleteTrack, 
-  updatePlaylistStatus, 
-  getDownloadsDir, 
-  getCoversDir, 
+import {
+  Playlist,
+  Track,
+  addTrack,
+  deleteTrack,
+  updatePlaylistStatus,
+  getDownloadsDir,
+  getCoversDir,
   getTracksForPlaylist,
   updateTrackBpm,
   updateTrackKey
@@ -22,7 +22,10 @@ import nodeId3 from 'node-id3'
 const activeSyncs = new Map<string, boolean>()
 
 // Parse YouTube video title to extract Artist and Title
-export function parseTitleAndArtist(ytTitle: string, defaultUploader: string): { title: string; artist: string } {
+export function parseTitleAndArtist(
+  ytTitle: string,
+  defaultUploader: string
+): { title: string; artist: string } {
   const separators = [' - ', ' – ', ' — ', ' | ', ' ~ ']
   let artist = defaultUploader
   let title = ytTitle
@@ -38,7 +41,10 @@ export function parseTitleAndArtist(ytTitle: string, defaultUploader: string): {
 
   // Remove common YouTube suffixes
   title = title
-    .replace(/\s*[([{\s](official\s+(video|audio|lyric|music\s+video|visualizer|mv)|lyrics|official|hd|4k|clip\s+officiel|music\s+video|official\s+music\s+video)[)\]}\s]*/gi, '')
+    .replace(
+      /\s*[([{\s](official\s+(video|audio|lyric|music\s+video|visualizer|mv)|lyrics|official|hd|4k|clip\s+officiel|music\s+video|official\s+music\s+video)[)\]}\s]*/gi,
+      ''
+    )
     .trim()
 
   if (!title) {
@@ -66,7 +72,7 @@ export async function syncPlaylist(playlist: Playlist, win: BrowserWindow): Prom
     const localTracks = getTracksForPlaylist(playlist.id)
 
     // Pre-create placeholder tracks in database for any new tracks in the playlist
-    const localTrackIds = new Set(localTracks.map(t => t.id))
+    const localTrackIds = new Set(localTracks.map((t) => t.id))
     let addedPlaceholders = false
     for (const e of ytPlaylist.entries) {
       if (!localTrackIds.has(e.id)) {
@@ -93,12 +99,12 @@ export async function syncPlaylist(playlist: Playlist, win: BrowserWindow): Prom
 
     // Refresh localTracks to include the newly added placeholders
     const currentLocalTracks = addedPlaceholders ? getTracksForPlaylist(playlist.id) : localTracks
-    const currentLocalTrackIds = new Set(currentLocalTracks.map(t => t.id))
-    const ytTracksMap = new Map(ytPlaylist.entries.map(e => [e.id, e]))
+    const currentLocalTrackIds = new Set(currentLocalTracks.map((t) => t.id))
+    const ytTracksMap = new Map(ytPlaylist.entries.map((e) => [e.id, e]))
 
-    const toDownload = ytPlaylist.entries.filter(e => {
+    const toDownload = ytPlaylist.entries.filter((e) => {
       if (!currentLocalTrackIds.has(e.id)) return true
-      const track = currentLocalTracks.find(t => t.id === e.id)
+      const track = currentLocalTracks.find((t) => t.id === e.id)
       if (!track || !existsSync(track.filepath) || !existsSync(track.coverPath)) {
         return true // Re-download if physical files are missing (required for audio/waveform)
       }
@@ -141,7 +147,7 @@ export async function syncPlaylist(playlist: Playlist, win: BrowserWindow): Prom
       }
     }
 
-    const toDelete = currentLocalTracks.filter(t => !ytTracksMap.has(t.id))
+    const toDelete = currentLocalTracks.filter((t) => !ytTracksMap.has(t.id))
 
     // 1. Delete removed tracks
     for (const track of toDelete) {
@@ -190,22 +196,16 @@ export async function syncPlaylist(playlist: Playlist, win: BrowserWindow): Prom
 
         try {
           // Download
-          await downloadTrack(
-            ytTrack.id,
-            filepath,
-            coverPath,
-            ytPlaylist.title,
-            (percent) => {
-              win.webContents.send('download-progress', {
-                playlistId: playlist.id,
-                trackId: ytTrack.id,
-                title: ytTrack.title,
-                percent,
-                current: currentDownloadIndex,
-                total: toDownload.length
-              })
-            }
-          )
+          await downloadTrack(ytTrack.id, filepath, coverPath, ytPlaylist.title, (percent) => {
+            win.webContents.send('download-progress', {
+              playlistId: playlist.id,
+              trackId: ytTrack.id,
+              title: ytTrack.title,
+              percent,
+              current: currentDownloadIndex,
+              total: toDownload.length
+            })
+          })
 
           // Parse metadata & write ID3 (embed cover image as binary buffer)
           const { title, artist } = parseTitleAndArtist(ytTrack.title, ytTrack.uploader)
@@ -338,7 +338,7 @@ export function startBackgroundSync(win: BrowserWindow, intervalMs = 30 * 60 * 1
     const { getPlaylists } = require('./db')
     const playlists = getPlaylists()
     for (const playlist of playlists) {
-      syncPlaylist(playlist, win).catch(err => console.error(err))
+      syncPlaylist(playlist, win).catch((err) => console.error(err))
     }
   }, intervalMs)
 }

@@ -40,8 +40,6 @@ export default function Mixer({
 }: MixerProps): React.JSX.Element {
   return (
     <div className="flex flex-col items-center justify-between border border-zinc-900 bg-zinc-950 px-4 py-4 rounded-xl shadow-lg w-[260px] select-none">
-
-
       {/* EQ Knobs Area */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 w-full py-2">
         {/* DECK A EQ */}
@@ -130,7 +128,9 @@ export default function Mixer({
             onChange={(e) => onMasterVolumeChange(parseFloat(e.target.value))}
             className="accent-amber-500 h-1.5 w-14 cursor-pointer bg-zinc-900 rounded-lg outline-none rotate-270"
           />
-          <span className="text-[9px] font-mono text-zinc-500">{Math.round(masterVolume * 100)}%</span>
+          <span className="text-[9px] font-mono text-zinc-500">
+            {Math.round(masterVolume * 100)}%
+          </span>
         </div>
 
         {/* Volume Fader B */}
@@ -166,7 +166,6 @@ export default function Mixer({
           className="accent-zinc-400 h-2 w-full cursor-pointer bg-zinc-900 rounded-lg outline-none mt-1"
         />
       </div>
-
     </div>
   )
 }

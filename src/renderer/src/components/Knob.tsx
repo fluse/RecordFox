@@ -30,7 +30,7 @@ export default function Knob({
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     setIsDragging(true)
-    
+
     const startY = e.clientY
     const startValue = value
     const range = max - min
@@ -71,7 +71,7 @@ export default function Knob({
       <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
         {label}
       </span>
-      
+
       <div
         ref={knobRef}
         onMouseDown={handleMouseDown}
@@ -80,7 +80,9 @@ export default function Knob({
           isDragging ? 'border-zinc-700 bg-zinc-900' : ''
         }`}
         style={{
-          boxShadow: isDragging ? `0 0 8px ${color}22, inset 0 2px 4px rgba(0,0,0,0.5)` : 'inset 0 2px 4px rgba(0,0,0,0.5)'
+          boxShadow: isDragging
+            ? `0 0 8px ${color}22, inset 0 2px 4px rgba(0,0,0,0.5)`
+            : 'inset 0 2px 4px rgba(0,0,0,0.5)'
         }}
       >
         {/* SVG Circular Indicator */}
@@ -113,12 +115,12 @@ export default function Knob({
         </svg>
 
         {/* Knob Inner Circle / Cap */}
-        <div 
+        <div
           className="h-7 w-7 rounded-full bg-zinc-900 border border-zinc-950 flex items-center justify-center relative shadow"
           style={{ transform: `rotate(${angle}deg)` }}
         >
           {/* Knob pointer marker line */}
-          <div 
+          <div
             className="absolute top-0.5 left-1/2 -translate-x-1/2 w-0.5 h-2 rounded-full"
             style={{ backgroundColor: color }}
           />

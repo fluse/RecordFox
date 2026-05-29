@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   --color-border: hsl(var(--border));
@@ -106,7 +106,9 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
     overflow-x: hidden;
   }
 }
@@ -213,8 +215,8 @@
   background-color: rgba(255, 255, 255, 0.2) !important;
 }
 
-.light input[type="text"],
-.light input[type="url"] {
+.light input[type='text'],
+.light input[type='url'] {
   background-color: #ffffff !important;
   color: #18181b !important;
   border-color: #d4d4d8 !important;
@@ -246,5 +248,8 @@ h1,
 h2,
 span,
 p {
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
 }

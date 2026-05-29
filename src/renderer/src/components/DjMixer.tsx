@@ -17,7 +17,7 @@ export default function DjMixer({
   onLoadTrack
 }: DjMixerProps): React.JSX.Element {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null)
-  
+
   // Gain Nodes refs to dynamically update volume/master/crossfader values
   const masterGainRef = useRef<GainNode | null>(null)
   const crossfaderGainARef = useRef<GainNode | null>(null)
@@ -40,7 +40,7 @@ export default function DjMixer({
   // 1. Initialize AudioContext and Master Nodes
   useEffect(() => {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-    
+
     // Create nodes
     const masterGain = ctx.createGain()
     const crossfaderGainA = ctx.createGain()
@@ -55,10 +55,10 @@ export default function DjMixer({
     masterGainRef.current = masterGain
     crossfaderGainARef.current = crossfaderGainA
     crossfaderGainBRef.current = crossfaderGainB
-    
+
     // Set initial volumes
     masterGain.gain.value = masterVolume
-    
+
     // Set initial crossfader gains
     updateCrossfaderGains(0.0, crossfaderGainA, crossfaderGainB)
 
@@ -70,9 +70,13 @@ export default function DjMixer({
   }, [])
 
   // Calculate and update crossfader volumes based on linear crossfade curve
-  const updateCrossfaderGains = (val: number, nodeA = crossfaderGainARef.current, nodeB = crossfaderGainBRef.current) => {
+  const updateCrossfaderGains = (
+    val: number,
+    nodeA = crossfaderGainARef.current,
+    nodeB = crossfaderGainBRef.current
+  ) => {
     if (!nodeA || !nodeB) return
-    
+
     // Linear Crossfader Curve
     // If val is negative (towards A), Deck A is 100% and B fades out.
     // If val is positive (towards B), Deck B is 100% and A fades out.
@@ -118,7 +122,6 @@ export default function DjMixer({
 
   return (
     <div className="flex items-center justify-center gap-6 p-6">
-      
       {/* DECK A */}
       <Deck
         deckId="A"
@@ -170,7 +173,6 @@ export default function DjMixer({
         volumeVal={volumeB}
         onLoadTrack={(t) => onLoadTrack(t, 'B')}
       />
-
     </div>
   )
 }

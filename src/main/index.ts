@@ -4,11 +4,11 @@ import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
-import { 
-  initDb, 
-  getPlaylists, 
-  addPlaylist as addPlaylistToDb, 
-  deletePlaylist as deletePlaylistFromDb, 
+import {
+  initDb,
+  getPlaylists,
+  addPlaylist as addPlaylistToDb,
+  deletePlaylist as deletePlaylistFromDb,
   getTracksForPlaylist,
   getTracks,
   updateTrackBpm,
@@ -109,10 +109,10 @@ app.whenReady().then(async () => {
         lastSync: ''
       }
       addPlaylistToDb(newPlaylist)
-      
+
       // Trigger sync in background immediately
       if (mainWindow) {
-        syncPlaylist(newPlaylist, mainWindow).catch(err => console.error('Sync failed:', err))
+        syncPlaylist(newPlaylist, mainWindow).catch((err) => console.error('Sync failed:', err))
       }
 
       return { success: true, playlist: newPlaylist }
@@ -132,9 +132,9 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('playlists:sync', (_, id: string) => {
-    const playlist = getPlaylists().find(p => p.id === id)
+    const playlist = getPlaylists().find((p) => p.id === id)
     if (playlist && mainWindow) {
-      syncPlaylist(playlist, mainWindow).catch(err => console.error('Manual sync failed:', err))
+      syncPlaylist(playlist, mainWindow).catch((err) => console.error('Manual sync failed:', err))
       return { success: true }
     }
     return { success: false, error: 'Playlist not found' }
@@ -154,45 +154,54 @@ app.whenReady().then(async () => {
   })
 
   // On-demand BPM re-analysis for a single track
-  ipcMain.handle('tracks:analyze-bpm', async (_, trackId: string, playlistId: string, filepath: string) => {
-    try {
-      const bpm = await analyzeBpm(filepath)
-      if (bpm > 0) {
-        updateTrackBpm(trackId, playlistId, bpm)
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('bpm-analyzed', trackId, playlistId, bpm)
+  ipcMain.handle(
+    'tracks:analyze-bpm',
+    async (_, trackId: string, playlistId: string, filepath: string) => {
+      try {
+        const bpm = await analyzeBpm(filepath)
+        if (bpm > 0) {
+          updateTrackBpm(trackId, playlistId, bpm)
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('bpm-analyzed', trackId, playlistId, bpm)
+          }
         }
+        return { success: true, bpm }
+      } catch (e: any) {
+        return { success: false, error: e.message }
       }
-      return { success: true, bpm }
-    } catch (e: any) {
-      return { success: false, error: e.message }
     }
-  })
+  )
 
   // On-demand Key analysis for a single track
-  ipcMain.handle('tracks:analyze-key', async (_, trackId: string, playlistId: string, filepath: string) => {
-    try {
-      const { camelot, tkey } = await analyzeKey(filepath)
-      if (camelot) {
-        updateTrackKey(trackId, playlistId, camelot, tkey)
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('key-analyzed', trackId, playlistId, camelot)
+  ipcMain.handle(
+    'tracks:analyze-key',
+    async (_, trackId: string, playlistId: string, filepath: string) => {
+      try {
+        const { camelot, tkey } = await analyzeKey(filepath)
+        if (camelot) {
+          updateTrackKey(trackId, playlistId, camelot, tkey)
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('key-analyzed', trackId, playlistId, camelot)
+          }
         }
+        return { success: true, key: camelot }
+      } catch (e: any) {
+        return { success: false, error: e.message }
       }
-      return { success: true, key: camelot }
-    } catch (e: any) {
-      return { success: false, error: e.message }
     }
-  })
+  )
 
-  ipcMain.handle('tracks:update-rating', (_, trackId: string, playlistId: string, rating: number) => {
-    try {
-      updateTrackRating(trackId, playlistId, rating)
-      return { success: true }
-    } catch (e: any) {
-      return { success: false, error: e.message }
+  ipcMain.handle(
+    'tracks:update-rating',
+    (_, trackId: string, playlistId: string, rating: number) => {
+      try {
+        updateTrackRating(trackId, playlistId, rating)
+        return { success: true }
+      } catch (e: any) {
+        return { success: false, error: e.message }
+      }
     }
-  })
+  )
 
   ipcMain.handle('settings:get', () => {
     return getSettings()
@@ -243,8 +252,10 @@ app.whenReady().then(async () => {
       buttons: ['Ja, verschieben', 'Nein, nur Pfad ändern', 'Abbrechen'],
       defaultId: 0,
       title: 'Speicherort verschieben',
-      message: 'Möchtest du die existierenden Musikdateien und Playlisten in den neuen Ordner verschieben?',
-      detail: 'Wenn du Verschieben wählst, werden alle MP3s und Cover an den neuen Ort kopiert/verschoben. Wenn du Nein wählst, verbleiben sie am alten Ort.'
+      message:
+        'Möchtest du die existierenden Musikdateien und Playlisten in den neuen Ordner verschieben?',
+      detail:
+        'Wenn du Verschieben wählst, werden alle MP3s und Cover an den neuen Ort kopiert/verschoben. Wenn du Nein wählst, verbleiben sie am alten Ort.'
     })
     if (result.response === 0) return 'move'
     if (result.response === 1) return 'change'
@@ -269,8 +280,10 @@ app.whenReady().then(async () => {
     const { existsSync } = require('fs')
     const allTracks = getTracks()
 
-    const needsBpm = allTracks.filter(t => t.bpm === 0 && t.filepath && existsSync(t.filepath))
-    const needsKey = allTracks.filter(t => (!t.key || t.key === '') && t.filepath && existsSync(t.filepath))
+    const needsBpm = allTracks.filter((t) => t.bpm === 0 && t.filepath && existsSync(t.filepath))
+    const needsKey = allTracks.filter(
+      (t) => (!t.key || t.key === '') && t.filepath && existsSync(t.filepath)
+    )
 
     console.log(`[Analysis] ${needsBpm.length} tracks need BPM, ${needsKey.length} tracks need Key`)
 
