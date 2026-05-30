@@ -1,43 +1,26 @@
 import React from 'react'
-
 import Knob from './Knob'
+import { useMixerStore } from '@renderer/store/useMixerStore'
 
-interface MixerProps {
-  eqLowA: number
-  eqMidA: number
-  eqHighA: number
-  volumeA: number
+export default function Mixer(): React.JSX.Element {
+  const eqLowA = useMixerStore((state) => state.eqLowA)
+  const eqMidA = useMixerStore((state) => state.eqMidA)
+  const eqHighA = useMixerStore((state) => state.eqHighA)
+  const volumeA = useMixerStore((state) => state.volumeA)
 
-  eqLowB: number
-  eqMidB: number
-  eqHighB: number
-  volumeB: number
+  const eqLowB = useMixerStore((state) => state.eqLowB)
+  const eqMidB = useMixerStore((state) => state.eqMidB)
+  const eqHighB = useMixerStore((state) => state.eqHighB)
+  const volumeB = useMixerStore((state) => state.volumeB)
 
-  crossfader: number // -1.0 (Left, Deck A) to 1.0 (Right, Deck B)
-  masterVolume: number
+  const crossfader = useMixerStore((state) => state.crossfader)
+  const masterVolume = useMixerStore((state) => state.masterVolume)
 
-  onEqChange: (deck: 'A' | 'B', eqType: 'low' | 'mid' | 'high', val: number) => void
-  onVolumeChange: (deck: 'A' | 'B', val: number) => void
-  onCrossfaderChange: (val: number) => void
-  onMasterVolumeChange: (val: number) => void
-}
+  const setEq = useMixerStore((state) => state.setEq)
+  const setVolume = useMixerStore((state) => state.setVolume)
+  const setCrossfader = useMixerStore((state) => state.setCrossfader)
+  const setMasterVolume = useMixerStore((state) => state.setMasterVolume)
 
-export default function Mixer({
-  eqLowA,
-  eqMidA,
-  eqHighA,
-  volumeA,
-  eqLowB,
-  eqMidB,
-  eqHighB,
-  volumeB,
-  crossfader,
-  masterVolume,
-  onEqChange,
-  onVolumeChange,
-  onCrossfaderChange,
-  onMasterVolumeChange
-}: MixerProps): React.JSX.Element {
   return (
     <div className="flex flex-col items-center justify-between border border-zinc-900 bg-zinc-950 px-4 py-4 rounded-xl shadow-lg w-[260px] select-none">
       {/* EQ Knobs Area */}
@@ -49,7 +32,7 @@ export default function Mixer({
             min={-24}
             max={12}
             value={eqHighA}
-            onChange={(val) => onEqChange('A', 'high', val)}
+            onChange={(val) => setEq('A', 'high', val)}
             color="#a855f7"
           />
           <Knob
@@ -57,7 +40,7 @@ export default function Mixer({
             min={-24}
             max={12}
             value={eqMidA}
-            onChange={(val) => onEqChange('A', 'mid', val)}
+            onChange={(val) => setEq('A', 'mid', val)}
             color="#a855f7"
           />
           <Knob
@@ -65,7 +48,7 @@ export default function Mixer({
             min={-24}
             max={12}
             value={eqLowA}
-            onChange={(val) => onEqChange('A', 'low', val)}
+            onChange={(val) => setEq('A', 'low', val)}
             color="#a855f7"
           />
         </div>
@@ -77,7 +60,7 @@ export default function Mixer({
             min={-24}
             max={12}
             value={eqHighB}
-            onChange={(val) => onEqChange('B', 'high', val)}
+            onChange={(val) => setEq('B', 'high', val)}
             color="#9333ea"
           />
           <Knob
@@ -85,7 +68,7 @@ export default function Mixer({
             min={-24}
             max={12}
             value={eqMidB}
-            onChange={(val) => onEqChange('B', 'mid', val)}
+            onChange={(val) => setEq('B', 'mid', val)}
             color="#9333ea"
           />
           <Knob
@@ -93,7 +76,7 @@ export default function Mixer({
             min={-24}
             max={12}
             value={eqLowB}
-            onChange={(val) => onEqChange('B', 'low', val)}
+            onChange={(val) => setEq('B', 'low', val)}
             color="#9333ea"
           />
         </div>
@@ -110,7 +93,7 @@ export default function Mixer({
             max="1.0"
             step="0.05"
             value={volumeA}
-            onChange={(e) => onVolumeChange('A', parseFloat(e.target.value))}
+            onChange={(e) => setVolume('A', parseFloat(e.target.value))}
             className="accent-primary h-1.5 w-14 cursor-pointer bg-zinc-900 rounded-lg outline-none rotate-270"
           />
           <span className="text-[9px] font-mono text-zinc-500">{Math.round(volumeA * 100)}%</span>
@@ -125,7 +108,7 @@ export default function Mixer({
             max="1.0"
             step="0.05"
             value={masterVolume}
-            onChange={(e) => onMasterVolumeChange(parseFloat(e.target.value))}
+            onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
             className="accent-amber-500 h-1.5 w-14 cursor-pointer bg-zinc-900 rounded-lg outline-none rotate-270"
           />
           <span className="text-[9px] font-mono text-zinc-500">
@@ -142,7 +125,7 @@ export default function Mixer({
             max="1.0"
             step="0.05"
             value={volumeB}
-            onChange={(e) => onVolumeChange('B', parseFloat(e.target.value))}
+            onChange={(e) => setVolume('B', parseFloat(e.target.value))}
             className="accent-purple-600 h-1.5 w-14 cursor-pointer bg-zinc-900 rounded-lg outline-none rotate-270"
           />
           <span className="text-[9px] font-mono text-zinc-500">{Math.round(volumeB * 100)}%</span>
@@ -162,7 +145,7 @@ export default function Mixer({
           max="1.0"
           step="0.05"
           value={crossfader}
-          onChange={(e) => onCrossfaderChange(parseFloat(e.target.value))}
+          onChange={(e) => setCrossfader(parseFloat(e.target.value))}
           className="accent-zinc-400 h-2 w-full cursor-pointer bg-zinc-900 rounded-lg outline-none mt-1"
         />
       </div>

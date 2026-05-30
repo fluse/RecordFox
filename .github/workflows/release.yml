@@ -33,7 +33,7 @@ jobs:
       # ---> DIESER SCHRITT WAR FEHLEND <---
       - name: Build Application
         run: npm run build
-        # Falls dein Build-Befehl in der package.json anders heißt (z.B. npm run build:electron), 
+        # Falls dein Build-Befehl in der package.json anders heißt (z.B. npm run build:electron),
         # musst du das hier entsprechend anpassen.
 
       - name: Build & Publish to GitHub Releases

@@ -23,10 +23,11 @@ import { getMediaUrl } from '../utils/audio'
 export interface DeckEngine {
   // Playback state
   isPlaying: boolean
-  currentTime: number
+  getCurrentTime(): number
   duration: number
   pitch: number
   keyLock: boolean
+  keyShift: number
   cueTime: number | null
   loopStart: number | null
   loopEnd: number | null
@@ -46,9 +47,13 @@ export interface DeckEngine {
   handleCueMouseUp(): void
   handleBeatLoop(beats: number): void
   handleSync(): void
+  startNudge(direction: 'up' | 'down'): void
+  stopNudge(): void
+  handleKeyShiftChange(semitones: number): void
 }
 
 interface UseDeckEngineOptions {
+  deckId: 'A' | 'B'
   track: Track | null
   audioContext: AudioContext | null
   /** The permanent EQ→Volume gain chain entry node (already connected to crossfader→master). */
@@ -208,7 +213,7 @@ registerProcessor('wsola-processor', WsolaProcessor)
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
-  const { track, audioContext, filterLowNode, opponentBpm } = options
+  const { deckId, track, audioContext, filterLowNode, opponentBpm } = options
 
   // ── Persistent Audio Graph nodes (created once) ───────────────────────────
   // We only create these signal-chain nodes once; they stay alive for the
@@ -216,7 +221,7 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
   // play/seek action.
 
   /** Permanent EQ filter ref passed in from the parent (via props). */
-  const filterLowRef  = useRef<BiquadFilterNode | null>(null)
+  const filterLowRef = useRef<BiquadFilterNode | null>(null)
 
   /** Single AudioBuffer holding the entire decoded PCM for the current track. */
   const audioBufferRef = useRef<AudioBuffer | null>(null)
@@ -244,31 +249,36 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
   // where startOffset is the buffer offset we passed to sourceNode.start().
 
   const startContextTimeRef = useRef(0)
-  const startOffsetRef      = useRef(0)
-  const isPlayingRef        = useRef(false)
-  const rafIdRef            = useRef<number>(0)
-  const pitchRef            = useRef(1.0)
-  const loopStartRef        = useRef<number | null>(null)
-  const loopEndRef          = useRef<number | null>(null)
-  const keyLockRef          = useRef(true)
-  const cueTimeRef          = useRef<number | null>(null)
+  const startOffsetRef = useRef(0)
+  const isPlayingRef = useRef(false)
+  const rafIdRef = useRef<number>(0)
+  const pitchRef = useRef(1.0)
+  const loopStartRef = useRef<number | null>(null)
+  const loopEndRef = useRef<number | null>(null)
+  const keyLockRef = useRef(true)
+  const cueTimeRef = useRef<number | null>(null)
+
+  const nudgeOffsetRef = useRef(0)
+  const keyShiftRef = useRef(0)
+  const nudgeStartContextTimeRef = useRef(0)
+  const nudgeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Stable refs so the RAF loop never needs to restart when callbacks change
-  const getPositionRef      = useRef<() => number>(() => 0)
-  const playRef             = useRef<(offset: number) => void>(() => {})
+  const getPositionRef = useRef<() => number>(() => 0)
+  const playRef = useRef<(offset: number) => void>(() => {})
 
   // ── React state (only for rendering) ─────────────────────────────────────
-  const [isPlaying,       setIsPlaying]       = useState(false)
-  const [currentTime,     setCurrentTime]     = useState(0)
-  const [duration,        setDuration]        = useState(0)
-  const [pitch,           setPitch]           = useState(1.0)
-  const [keyLock,         setKeyLock]         = useState(true)
-  const [cueTime,         setCueTime]         = useState<number | null>(null)
-  const [loopStart,       setLoopStart]       = useState<number | null>(null)
-  const [loopEnd,         setLoopEnd]         = useState<number | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [duration, setDuration] = useState(0)
+  const [pitch, setPitch] = useState(1.0)
+  const [keyLock, setKeyLock] = useState(true)
+  const [keyShift, setKeyShift] = useState(0)
+  const [cueTime, setCueTime] = useState<number | null>(null)
+  const [loopStart, setLoopStart] = useState<number | null>(null)
+  const [loopEnd, setLoopEnd] = useState<number | null>(null)
   const [activeLoopBeats, setActiveLoopBeats] = useState<number | null>(null)
-  const [peaks,           setPeaks]           = useState<number[]>([])
-  const [decoding,        setDecoding]        = useState(false)
+  const [peaks, setPeaks] = useState<number[]>([])
+  const [decoding, setDecoding] = useState(false)
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -281,9 +291,21 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
   /** Compute playback position from the AudioContext clock. */
   const getPosition = useCallback((): number => {
     if (!audioContext || !isPlayingRef.current) return startOffsetRef.current
-    const elapsed = (audioContext.currentTime - startContextTimeRef.current) * pitchRef.current
+    const effectiveRate = pitchRef.current * (1.0 + nudgeOffsetRef.current)
+    const elapsed = (audioContext.currentTime - startContextTimeRef.current) * effectiveRate
     return clampTime(startOffsetRef.current + elapsed)
   }, [audioContext, clampTime])
+
+  const commitCurrentPosition = useCallback((): void => {
+    if (!audioContext) return
+    const pos = getPosition()
+    startOffsetRef.current = pos
+    startContextTimeRef.current = audioContext.currentTime
+  }, [audioContext, getPosition])
+
+  const getCurrentTime = useCallback((): number => {
+    return getPosition()
+  }, [getPosition])
 
   // ── Load WSOLA worklet ────────────────────────────────────────────────────
 
@@ -291,7 +313,7 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
     if (!audioContext || wsolaReadyRef.current) return
     try {
       const blob = new Blob([WSOLA_WORKLET_SOURCE], { type: 'application/javascript' })
-      const url  = URL.createObjectURL(blob)
+      const url = URL.createObjectURL(blob)
       await audioContext.audioWorklet.addModule(url)
       URL.revokeObjectURL(url)
       wsolaReadyRef.current = true
@@ -308,7 +330,7 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
 
     try {
       const node = new AudioWorkletNode(audioContext, 'wsola-processor', {
-        numberOfInputs:  0,
+        numberOfInputs: 0,
         numberOfOutputs: 1,
         outputChannelCount: [2]
       })
@@ -331,14 +353,17 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
     if (!audioContext || !audioBufferRef.current || !filterLowRef.current) return null
 
     const src = audioContext.createBufferSource()
-    src.buffer       = audioBufferRef.current
-    src.playbackRate.value = pitchRef.current
+    src.buffer = audioBufferRef.current
+
+    const pitchRatio = Math.pow(2, keyShiftRef.current / 12)
+    const effectiveRate = pitchRef.current * (1.0 + nudgeOffsetRef.current) * pitchRatio
+    src.playbackRate.value = effectiveRate
 
     // Configure native loop if active
     if (loopStartRef.current !== null && loopEndRef.current !== null) {
-      src.loop      = true
+      src.loop = true
       src.loopStart = loopStartRef.current
-      src.loopEnd   = loopEndRef.current
+      src.loopEnd = loopEndRef.current
     }
 
     if (keyLockRef.current && wsolaNodeRef.current) {
@@ -357,54 +382,69 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
 
   // ── play() ────────────────────────────────────────────────────────────────
 
-  const play = useCallback((offset: number): void => {
-    if (!audioContext || !audioBufferRef.current || !filterLowRef.current) return
+  const play = useCallback(
+    (offset: number): void => {
+      if (!audioContext || !audioBufferRef.current || !filterLowRef.current) return
 
-    // Stop previous source (safe to call even if already stopped)
-    if (sourceNodeRef.current) {
-      try { sourceNodeRef.current.stop() } catch { /* already stopped */ }
-      sourceNodeRef.current.disconnect()
-      sourceNodeRef.current = null
-    }
-
-    const src = createAndConnectSource()
-    if (!src) return
-
-    // If using WSOLA key-lock, send the buffer + offset to the worklet.
-    // IMPORTANT: copy the Float32Array – do NOT transfer the ArrayBuffer.
-    // Transferring would detach audioBufferRef.current making it unusable for
-    // any subsequent createBufferSource() or getChannelData() call.
-    if (keyLockRef.current && wsolaNodeRef.current) {
-      const channelData = audioBufferRef.current.getChannelData(0)
-      const copy = new Float32Array(channelData) // safe copy, original intact
-      wsolaNodeRef.current.port.postMessage(
-        { type: 'buffer', buffer: copy, startOffset: Math.floor(offset * audioBufferRef.current.sampleRate) },
-        [copy.buffer] // transfer the COPY, not the original
-      )
-    }
-
-    src.start(0, offset)
-
-    // Guard: only handle the "natural end" event if this source is still the
-    // active one. Seek / pause / track-change call stop() first and set
-    // sourceNodeRef.current = null, so the stale onended will see a mismatch
-    // and do nothing – preventing the UI state from being reset mid-playback.
-    src.onended = () => {
-      if (sourceNodeRef.current === src && isPlayingRef.current) {
-        isPlayingRef.current = false
-        setIsPlaying(false)
-        startOffsetRef.current = 0
-        setCurrentTime(0)
+      // Stop previous source (safe to call even if already stopped)
+      if (sourceNodeRef.current) {
+        try {
+          sourceNodeRef.current.stop()
+        } catch {
+          /* already stopped */
+        }
+        sourceNodeRef.current.disconnect()
+        sourceNodeRef.current = null
       }
-    }
 
-    startContextTimeRef.current = audioContext.currentTime
-    startOffsetRef.current      = offset
-    isPlayingRef.current        = true
-    sourceNodeRef.current       = src
+      const src = createAndConnectSource()
+      if (!src) return
 
-    setIsPlaying(true)
-  }, [audioContext, createAndConnectSource])
+      // If using WSOLA key-lock, send the buffer + offset to the worklet.
+      // IMPORTANT: copy the Float32Array – do NOT transfer the ArrayBuffer.
+      // Transferring would detach audioBufferRef.current making it unusable for
+      // any subsequent createBufferSource() or getChannelData() call.
+      if (keyLockRef.current && wsolaNodeRef.current) {
+        const tempoParam = wsolaNodeRef.current.parameters.get('tempo')
+        if (tempoParam) {
+          const effectiveTempo = pitchRef.current * (1.0 + nudgeOffsetRef.current)
+          tempoParam.setValueAtTime(effectiveTempo, audioContext.currentTime)
+        }
+        const channelData = audioBufferRef.current.getChannelData(0)
+        const copy = new Float32Array(channelData) // safe copy, original intact
+        wsolaNodeRef.current.port.postMessage(
+          {
+            type: 'buffer',
+            buffer: copy,
+            startOffset: Math.floor(offset * audioBufferRef.current.sampleRate)
+          },
+          [copy.buffer] // transfer the COPY, not the original
+        )
+      }
+
+      src.start(0, offset)
+
+      // Guard: only handle the "natural end" event if this source is still the
+      // active one. Seek / pause / track-change call stop() first and set
+      // sourceNodeRef.current = null, so the stale onended will see a mismatch
+      // and do nothing – preventing the UI state from being reset mid-playback.
+      src.onended = () => {
+        if (sourceNodeRef.current === src && isPlayingRef.current) {
+          isPlayingRef.current = false
+          setIsPlaying(false)
+          startOffsetRef.current = 0
+        }
+      }
+
+      startContextTimeRef.current = audioContext.currentTime
+      startOffsetRef.current = offset
+      isPlayingRef.current = true
+      sourceNodeRef.current = src
+
+      setIsPlaying(true)
+    },
+    [audioContext, createAndConnectSource]
+  )
 
   // ── pause() ───────────────────────────────────────────────────────────────
 
@@ -414,22 +454,29 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
     // Capture position before stopping
     const pos = getPosition()
     startOffsetRef.current = pos
-    isPlayingRef.current   = false
+    isPlayingRef.current = false
 
     if (sourceNodeRef.current) {
-      try { sourceNodeRef.current.stop() } catch { /* already stopped */ }
+      try {
+        sourceNodeRef.current.stop()
+      } catch {
+        /* already stopped */
+      }
       sourceNodeRef.current.disconnect()
       sourceNodeRef.current = null
     }
 
     setIsPlaying(false)
-    setCurrentTime(pos)
   }, [getPosition])
 
   // ── Keep stable refs up-to-date so the RAF loop never restarts ───────────
 
-  useEffect(() => { getPositionRef.current = getPosition }, [getPosition])
-  useEffect(() => { playRef.current = play }, [play])
+  useEffect(() => {
+    getPositionRef.current = getPosition
+  }, [getPosition])
+  useEffect(() => {
+    playRef.current = play
+  }, [play])
 
   // ── RAF position update loop ──────────────────────────────────────────────
   //
@@ -439,10 +486,9 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
   // two concurrent RAF loops that fought over the UI state.
 
   useEffect(() => {
-    const tick = () => {
+    const tick = (): void => {
       if (isPlayingRef.current) {
         const pos = getPositionRef.current()
-        setCurrentTime(pos)
 
         // Software loop enforcement (fallback when native loop is off)
         if (
@@ -460,7 +506,6 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
           isPlayingRef.current = false
           startOffsetRef.current = 0
           setIsPlaying(false)
-          setCurrentTime(0)
         }
       }
       rafIdRef.current = requestAnimationFrame(tick)
@@ -468,7 +513,7 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
 
     rafIdRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafIdRef.current)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Keep filterLowRef in sync ─────────────────────────────────────────────
 
@@ -476,18 +521,16 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
     filterLowRef.current = filterLowNode
   }, [filterLowNode])
 
-  // ── Load track: decode and build peaks ───────────────────────────────────
-
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (!track || !audioContext) {
       audioBufferRef.current = null
       setPeaks([])
       setDecoding(false)
       setIsPlaying(false)
-      setCurrentTime(0)
       setDuration(0)
       startOffsetRef.current = 0
-      isPlayingRef.current   = false
+      isPlayingRef.current = false
       return
     }
 
@@ -501,13 +544,12 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
     setLoopStart(null)
     setLoopEnd(null)
     loopStartRef.current = null
-    loopEndRef.current   = null
+    loopEndRef.current = null
     setActiveLoopBeats(null)
     setCueTime(0)
     cueTimeRef.current = 0
-    setCurrentTime(0)
     startOffsetRef.current = 0
-    isPlayingRef.current   = false
+    isPlayingRef.current = false
 
     const loadTrack = async (): Promise<void> => {
       setDecoding(true)
@@ -526,8 +568,8 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
 
         // Generate waveform peaks from left channel
         const channelData = audioBuffer.getChannelData(0)
-        const numBars  = 500
-        const step     = Math.ceil(channelData.length / numBars)
+        const numBars = 500
+        const step = Math.ceil(channelData.length / numBars)
         const generatedPeaks: number[] = []
 
         for (let i = 0; i < channelData.length; i += step) {
@@ -547,7 +589,7 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
     }
 
     loadTrack()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track, audioContext])
 
   // ── Public Actions ────────────────────────────────────────────────────────
@@ -563,40 +605,189 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
     }
   }, [audioContext, track, pause, play])
 
-  const seek = useCallback((time: number): void => {
-    const clamped = clampTime(time)
-    startOffsetRef.current = clamped
-    setCurrentTime(clamped)
+  const seek = useCallback(
+    (time: number): void => {
+      const clamped = clampTime(time)
+      startOffsetRef.current = clamped
 
-    if (isPlayingRef.current) {
-      play(clamped)
+      if (isPlayingRef.current) {
+        play(clamped)
+      }
+    },
+    [clampTime, play]
+  )
+
+  const handlePitchChange = useCallback(
+    (rate: number): void => {
+      const clamped = Math.max(0.5, Math.min(2.0, rate))
+      commitCurrentPosition()
+      pitchRef.current = clamped
+      setPitch(clamped)
+
+      const pitchRatio = Math.pow(2, keyShiftRef.current / 12)
+      const effectiveRate = clamped * (1.0 + nudgeOffsetRef.current) * pitchRatio
+
+      console.log(
+        `[useDeckEngine ${deckId}] handlePitchChange: rate=${rate}, pitchRatio=${pitchRatio}, effectiveRate=${effectiveRate}`
+      )
+
+      if (sourceNodeRef.current && audioContext) {
+        // Native AudioParam ramp – sample-accurate, no setTimeout needed
+        sourceNodeRef.current.playbackRate.cancelScheduledValues(audioContext.currentTime)
+        sourceNodeRef.current.playbackRate.linearRampToValueAtTime(
+          effectiveRate,
+          audioContext.currentTime + 0.04 // 40ms
+        )
+      }
+
+      // When KeyLock is ON, update WSOLA tempo parameter
+      if (keyLockRef.current && wsolaNodeRef.current && audioContext) {
+        const tempoParam = wsolaNodeRef.current.parameters.get('tempo')
+        if (tempoParam) {
+          const effectiveTempo = clamped * (1.0 + nudgeOffsetRef.current)
+          tempoParam.cancelScheduledValues(audioContext.currentTime)
+          tempoParam.linearRampToValueAtTime(effectiveTempo, audioContext.currentTime + 0.04)
+        }
+      }
+    },
+    [audioContext, commitCurrentPosition, deckId]
+  )
+
+  const startNudge = useCallback(
+    (direction: 'up' | 'down'): void => {
+      if (!audioContext) return
+
+      // Clear any pending stop-nudge timeout
+      if (nudgeTimeoutRef.current) {
+        clearTimeout(nudgeTimeoutRef.current)
+        nudgeTimeoutRef.current = null
+      }
+
+      commitCurrentPosition()
+      const amount = 0.03 // 3% nudge speed change
+      nudgeOffsetRef.current = direction === 'up' ? amount : -amount
+      nudgeStartContextTimeRef.current = audioContext.currentTime
+
+      const pitchRatio = Math.pow(2, keyShiftRef.current / 12)
+      const effectiveRate = pitchRef.current * (1.0 + nudgeOffsetRef.current) * pitchRatio
+
+      console.log(
+        `[useDeckEngine ${deckId}] startNudge: direction=${direction}, nudgeOffsetRef=${nudgeOffsetRef.current}, effectiveRate=${effectiveRate}`
+      )
+
+      if (sourceNodeRef.current) {
+        sourceNodeRef.current.playbackRate.cancelScheduledValues(audioContext.currentTime)
+        sourceNodeRef.current.playbackRate.setValueAtTime(effectiveRate, audioContext.currentTime)
+      }
+
+      if (keyLockRef.current && wsolaNodeRef.current) {
+        const tempoParam = wsolaNodeRef.current.parameters.get('tempo')
+        if (tempoParam) {
+          const effectiveTempo = pitchRef.current * (1.0 + nudgeOffsetRef.current)
+          tempoParam.cancelScheduledValues(audioContext.currentTime)
+          tempoParam.setValueAtTime(effectiveTempo, audioContext.currentTime)
+        }
+      }
+    },
+    [audioContext, commitCurrentPosition, deckId]
+  )
+
+  const executeStopNudge = useCallback((): void => {
+    if (nudgeTimeoutRef.current) {
+      clearTimeout(nudgeTimeoutRef.current)
+      nudgeTimeoutRef.current = null
     }
-  }, [clampTime, play])
 
-  const handlePitchChange = useCallback((rate: number): void => {
-    const clamped = Math.max(0.5, Math.min(2.0, rate))
-    pitchRef.current = clamped
-    setPitch(clamped)
+    commitCurrentPosition()
+    nudgeOffsetRef.current = 0
+
+    const pitchRatio = Math.pow(2, keyShiftRef.current / 12)
+    const effectiveRate = pitchRef.current * pitchRatio
+
+    console.log(
+      `[useDeckEngine ${deckId}] stopNudge (execute): restoring to pitchRef=${pitchRef.current}, effectiveRate=${effectiveRate}`
+    )
 
     if (sourceNodeRef.current && audioContext) {
-      // Native AudioParam ramp – sample-accurate, no setTimeout needed
-      sourceNodeRef.current.playbackRate.linearRampToValueAtTime(
-        clamped,
-        audioContext.currentTime + 0.04 // 40ms
-      )
+      sourceNodeRef.current.playbackRate.cancelScheduledValues(audioContext.currentTime)
+      sourceNodeRef.current.playbackRate.setValueAtTime(effectiveRate, audioContext.currentTime)
     }
 
-    // When KeyLock is ON, update WSOLA tempo parameter
-    if (keyLockRef.current && wsolaNodeRef.current) {
+    if (keyLockRef.current && wsolaNodeRef.current && audioContext) {
       const tempoParam = wsolaNodeRef.current.parameters.get('tempo')
       if (tempoParam) {
-        tempoParam.linearRampToValueAtTime(clamped, (audioContext?.currentTime ?? 0) + 0.04)
+        tempoParam.cancelScheduledValues(audioContext.currentTime)
+        tempoParam.setValueAtTime(pitchRef.current, audioContext.currentTime)
       }
-      // With key-lock ON, we don't change the native playbackRate (pitch stays fixed)
-      // but in this implementation we keep the source node at playbackRate = 1.0 and
-      // let WSOLA handle tempo. For simplicity in Phase 1 we just ramp the source rate.
     }
-  }, [audioContext])
+  }, [audioContext, commitCurrentPosition, deckId])
+
+  const stopNudge = useCallback((): void => {
+    if (!audioContext) return
+
+    const elapsed = audioContext.currentTime - nudgeStartContextTimeRef.current
+    const minDuration = 0.15 // 150ms minimum nudge duration to make quick taps audible
+
+    if (elapsed < minDuration) {
+      if (nudgeTimeoutRef.current) return // Already scheduled
+
+      const remainingTime = minDuration - elapsed
+      console.log(
+        `[useDeckEngine ${deckId}] stopNudge: tap was too quick (${elapsed.toFixed(3)}s), scheduling restore in ${remainingTime.toFixed(3)}s`
+      )
+
+      const pitchRatio = Math.pow(2, keyShiftRef.current / 12)
+      const effectiveRate = pitchRef.current * pitchRatio
+
+      // Schedule audio param restore at the exact future time
+      if (sourceNodeRef.current) {
+        sourceNodeRef.current.playbackRate.setValueAtTime(
+          effectiveRate,
+          audioContext.currentTime + remainingTime
+        )
+      }
+
+      if (keyLockRef.current && wsolaNodeRef.current) {
+        const tempoParam = wsolaNodeRef.current.parameters.get('tempo')
+        if (tempoParam) {
+          tempoParam.setValueAtTime(pitchRef.current, audioContext.currentTime + remainingTime)
+        }
+      }
+
+      // Set timeout to commit the state in JS when the nudge duration expires
+      nudgeTimeoutRef.current = setTimeout(() => {
+        nudgeTimeoutRef.current = null
+        executeStopNudge()
+      }, remainingTime * 1000)
+
+      return
+    }
+
+    // Long press release, or timeout triggered
+    executeStopNudge()
+  }, [audioContext, deckId, executeStopNudge])
+
+  const handleKeyShiftChange = useCallback(
+    (semitones: number): void => {
+      const clamped = Math.max(-12, Math.min(12, semitones))
+      commitCurrentPosition()
+      keyShiftRef.current = clamped
+      setKeyShift(clamped)
+
+      const pitchRatio = Math.pow(2, clamped / 12)
+      const effectiveRate = pitchRef.current * (1.0 + nudgeOffsetRef.current) * pitchRatio
+
+      console.log(
+        `[useDeckEngine ${deckId}] handleKeyShiftChange: semitones=${semitones}, pitchRatio=${pitchRatio}, effectiveRate=${effectiveRate}`
+      )
+
+      if (sourceNodeRef.current && audioContext) {
+        sourceNodeRef.current.playbackRate.cancelScheduledValues(audioContext.currentTime)
+        sourceNodeRef.current.playbackRate.setValueAtTime(effectiveRate, audioContext.currentTime)
+      }
+    },
+    [audioContext, commitCurrentPosition, deckId]
+  )
 
   const toggleKeyLock = useCallback(async (): Promise<void> => {
     const next = !keyLockRef.current
@@ -626,45 +817,47 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
     if (cueTimeRef.current === null) return
     pause()
     startOffsetRef.current = cueTimeRef.current
-    setCurrentTime(cueTimeRef.current)
     setIsPlaying(false)
   }, [pause])
 
-  const handleBeatLoop = useCallback((beats: number): void => {
-    if (!track || !track.bpm || !audioBufferRef.current) return
+  const handleBeatLoop = useCallback(
+    (beats: number): void => {
+      if (!track || !track.bpm || !audioBufferRef.current) return
 
-    if (loopStartRef.current !== null && loopEndRef.current !== null) {
-      // Check if same loop → toggle off
-      const expectedDuration = beats * (60 / track.bpm)
-      const actualDuration   = loopEndRef.current - loopStartRef.current
-      if (Math.abs(actualDuration - expectedDuration) < 0.05) {
-        // Turn off loop
-        loopStartRef.current = null
-        loopEndRef.current   = null
-        setLoopStart(null)
-        setLoopEnd(null)
-        setActiveLoopBeats(null)
-        // Restart without loop
-        if (isPlayingRef.current) play(getPosition())
-        return
+      if (loopStartRef.current !== null && loopEndRef.current !== null) {
+        // Check if same loop → toggle off
+        const expectedDuration = beats * (60 / track.bpm)
+        const actualDuration = loopEndRef.current - loopStartRef.current
+        if (Math.abs(actualDuration - expectedDuration) < 0.05) {
+          // Turn off loop
+          loopStartRef.current = null
+          loopEndRef.current = null
+          setLoopStart(null)
+          setLoopEnd(null)
+          setActiveLoopBeats(null)
+          // Restart without loop
+          if (isPlayingRef.current) play(getPosition())
+          return
+        }
       }
-    }
 
-    const current   = getPosition()
-    const beatSec   = 60 / track.bpm
-    const loopDur   = beats * beatSec
-    const ls        = current
-    const le        = clampTime(current + loopDur)
+      const current = getPosition()
+      const beatSec = 60 / track.bpm
+      const loopDur = beats * beatSec
+      const ls = current
+      const le = clampTime(current + loopDur)
 
-    loopStartRef.current = ls
-    loopEndRef.current   = le
-    setLoopStart(ls)
-    setLoopEnd(le)
-    setActiveLoopBeats(beats)
+      loopStartRef.current = ls
+      loopEndRef.current = le
+      setLoopStart(ls)
+      setLoopEnd(le)
+      setActiveLoopBeats(beats)
 
-    // Restart the source with native loop enabled
-    if (isPlayingRef.current) play(ls)
-  }, [track, getPosition, clampTime, play])
+      // Restart the source with native loop enabled
+      if (isPlayingRef.current) play(ls)
+    },
+    [track, getPosition, clampTime, play]
+  )
 
   const handleSync = useCallback((): void => {
     if (!track || !track.bpm || !opponentBpm) return
@@ -672,13 +865,78 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
     handlePitchChange(targetRate)
   }, [track, opponentBpm, handlePitchChange])
 
+  // ── Keyboard Shortcuts for Pitch Bend (Nudging) ───────────────────────────
+  useEffect(() => {
+    if (!track || !audioContext) return
+
+    const keys = deckId === 'A' ? { up: 't', down: 'g' } : { up: 'u', down: 'j' }
+
+    let isNudgingUp = false
+    let isNudgingDown = false
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      // Ignore if typing in input/textarea/editable
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return
+      }
+
+      const key = e.key.toLowerCase()
+      console.log(
+        `[useDeckEngine ${deckId}] handleKeyDown: key=${key}, keys.up=${keys.up}, keys.down=${keys.down}`
+      )
+      if (key === keys.up && !isNudgingUp) {
+        isNudgingUp = true
+        startNudge('up')
+      } else if (key === keys.down && !isNudgingDown) {
+        isNudgingDown = true
+        startNudge('down')
+      }
+    }
+
+    const handleKeyUp = (e: KeyboardEvent): void => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return
+      }
+
+      const key = e.key.toLowerCase()
+      console.log(`[useDeckEngine ${deckId}] handleKeyUp: key=${key}`)
+      if (key === keys.up) {
+        isNudgingUp = false
+        stopNudge()
+      } else if (key === keys.down) {
+        isNudgingDown = false
+        stopNudge()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+      if (isNudgingUp || isNudgingDown) {
+        stopNudge()
+      }
+    }
+  }, [track, audioContext, deckId, startNudge, stopNudge])
+
   // ── Cleanup on unmount ────────────────────────────────────────────────────
 
   useEffect(() => {
     return () => {
       cancelAnimationFrame(rafIdRef.current)
+      if (nudgeTimeoutRef.current) {
+        clearTimeout(nudgeTimeoutRef.current)
+      }
       if (sourceNodeRef.current) {
-        try { sourceNodeRef.current.stop() } catch { /* already stopped */ }
+        try {
+          sourceNodeRef.current.stop()
+        } catch {
+          /* already stopped */
+        }
         sourceNodeRef.current.disconnect()
       }
       if (wsolaNodeRef.current) {
@@ -689,10 +947,11 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
 
   return {
     isPlaying,
-    currentTime,
+    getCurrentTime,
     duration,
     pitch,
     keyLock,
+    keyShift,
     cueTime,
     loopStart,
     loopEnd,
@@ -707,6 +966,9 @@ export function useDeckEngine(options: UseDeckEngineOptions): DeckEngine {
     handleCueMouseDown,
     handleCueMouseUp,
     handleBeatLoop,
-    handleSync
+    handleSync,
+    startNudge,
+    stopNudge,
+    handleKeyShiftChange
   }
 }

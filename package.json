@@ -31,7 +31,8 @@
     "@ffprobe-installer/ffprobe": "^2.1.2",
     "lucide-react": "^1.17.0",
     "music-tempo": "^1.0.3",
-    "node-id3": "^0.2.9"
+    "node-id3": "^0.2.9",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

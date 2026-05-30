@@ -3,6 +3,7 @@
 Diese Roadmap definiert die Entwicklungsschritte vom aktuellen Prototypen zum professionellen DJ-Performance-Tool. Die Priorität liegt strikt auf: **1. Performance -> 2. Beatmatching-Präzision -> 3. Effekte -> 4. Hardware.**
 
 ## Phase 1: Deep-Level Performance & Refactoring (Fokus: 60 FPS)
+
 Bevor neue Features kommen, muss das System so optimiert werden, dass es selbst bei hoher CPU-Last nicht stottert.
 
 - [ ] **Pre-Rendering via OffscreenCanvas:**
@@ -16,6 +17,7 @@ Bevor neue Features kommen, muss das System so optimiert werden, dass es selbst 
   - [ ] Linearen Lautstärkeabfall in der Mitte beheben. Trigonometrische Kurve (Sinus/Cosinus) oder `Math.sqrt()` für den Gain-Wert des Crossfaders implementieren.
 
 ## Phase 2: Advanced Beatmatching & Sync-Engine (Fokus: Präzision)
+
 Das Herzstück des DJings. Die Mathematik hinter den Tracks muss sichtbar und nutzbar gemacht werden.
 
 - [ ] **Beat-Grid Rendering:**
@@ -33,6 +35,7 @@ Das Herzstück des DJings. Die Mathematik hinter den Tracks muss sichtbar und nu
   - [ ] `seek()` und Loop-Aktionen durch diese Quantisierungs-Logik schleusen.
 
 ## Phase 3: Performance-Navigation (Fokus: Track-Kontrolle)
+
 Tools, um live im Track zu springen, ohne den musikalischen Flow zu stören.
 
 - [ ] **Hot Cues & Beat Jump:**
@@ -48,6 +51,7 @@ Tools, um live im Track zu springen, ohne den musikalischen Flow zu stören.
   - [ ] Beim Klick auf Pause den Track nicht hart abbrechen, sondern per `playbackRate.exponentialRampToValueAtTime()` sanft auf 0 drosseln.
 
 ## Phase 4: Sound-Design & Effekte (Fokus: Mix-Qualität)
+
 Kreative Werkzeuge für nahtlose und spannende Übergänge.
 
 - [ ] **"Color" Filter (Bi-Polar HPF/LPF):**
@@ -64,10 +68,11 @@ Kreative Werkzeuge für nahtlose und spannende Übergänge.
   - [ ] Beim Loslassen springt die `currentTime` per `seek()` exakt dorthin, wo der Track ohne den Eingriff gewesen wäre.
 
 ## Phase 5: Hardware-Integration & Pro-Routing (Fokus: Haptik)
+
 Den Controller in ein echtes Stück Hardware verwandeln.
 
 - [ ] **Pre-Fader Listen (PFL) / Kopfhörer-Routing:**
-  - [ ] Audiosignal *vor* dem Line-Fader abgreifen.
+  - [ ] Audiosignal _vor_ dem Line-Fader abgreifen.
   - [ ] Signal auf `audioContext.destination` Kanal 3/4 routen (Standard für DJ-Interface-Kopfhörer).
 - [ ] **Web MIDI API (Controller-Mapping):**
   - [ ] `navigator.requestMIDIAccess()` integrieren.
@@ -78,13 +83,14 @@ Den Controller in ein echtes Stück Hardware verwandeln.
   - [ ] RMS-Werte berechnen und als optische LED-Kette (grün/gelb/rot) darstellen, um Clipping zu vermeiden.
 
 ## Phase 6: Cloud-Library Expansion (SoundCloud Integration)
+
 Das Ziel ist es, den bestehenden YouTube-Importer so zu abstrahieren, dass SoundCloud-URLs (Playlists & Tracks) durch dieselbe Analyse- und Tagging-Pipeline laufen.
 
 - [ ] **Importer-Abstraktion (Adapter Pattern):**
   - [ ] Das bestehende Backend-Skript so umbauen, dass es eine generische `downloadTrack(url)` Funktion gibt.
   - [ ] URL-Erkennung schreiben: Prüfen, ob der String `youtube.com/youtu.be` oder `soundcloud.com` enthält, und den jeweiligen Downloader-Adapter aufrufen.
 - [ ] **SoundCloud Scraper / API integrieren:**
-  - [ ] *Entscheidung:* Entweder die offizielle SoundCloud API nutzen (Client ID schwer zu bekommen) ODER auf bewährte Libraries wie `yt-dlp` (via Node-Wrapper, unterstützt nativ SC!) oder NPM-Pakete wie `soundcloud-scraper` setzen.
+  - [ ] _Entscheidung:_ Entweder die offizielle SoundCloud API nutzen (Client ID schwer zu bekommen) ODER auf bewährte Libraries wie `yt-dlp` (via Node-Wrapper, unterstützt nativ SC!) oder NPM-Pakete wie `soundcloud-scraper` setzen.
   - [ ] Logik schreiben, um aus einem SoundCloud-Playlist-Link alle darin enthaltenen Track-URLs zu extrahieren.
 - [ ] **Metadaten-Mapping (Vorbereitung für ID3):**
   - [ ] SoundCloud liefert oft extrem gute Metadaten. Die API/der Scraper muss folgendes abgreifen und an euren bestehenden ID3-Tagger übergeben:

@@ -107,10 +107,11 @@ export default function Sidebar({
               <div
                 key={playlist.id}
                 onClick={() => onSelectPlaylist(playlist.id)}
-                className={`group relative flex flex-col rounded-lg px-3 py-2.5 transition cursor-pointer ${isSelected
-                  ? 'bg-zinc-900 text-zinc-100'
-                  : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200'
-                  }`}
+                className={`group relative flex flex-col rounded-lg px-3 py-2.5 transition cursor-pointer ${
+                  isSelected
+                    ? 'bg-zinc-900 text-zinc-100'
+                    : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200'
+                }`}
               >
                 <div className="flex items-center justify-between w-full">
                   {editingPlaylistId === playlist.id ? (
@@ -181,7 +182,7 @@ export default function Sidebar({
                                       0
                                     )) /
                                     syncState.total) *
-                                  100
+                                    100
                                 )
                               )}%`
                             }}

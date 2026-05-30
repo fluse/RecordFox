@@ -301,8 +301,9 @@ export default function Tracklist({
           <div className="relative">
             <button
               onClick={(): void => setIsColMenuOpen(!isColMenuOpen)}
-              className={`flex items-center justify-center h-8 w-8 rounded-full border border-zinc-800 bg-zinc-950 text-zinc-400 transition hover:bg-zinc-900 hover:text-zinc-100 hover:border-primary/55 cursor-pointer ${isColMenuOpen ? 'border-primary/50 text-primary bg-zinc-900' : ''
-                }`}
+              className={`flex items-center justify-center h-8 w-8 rounded-full border border-zinc-800 bg-zinc-950 text-zinc-400 transition hover:bg-zinc-900 hover:text-zinc-100 hover:border-primary/55 cursor-pointer ${
+                isColMenuOpen ? 'border-primary/50 text-primary bg-zinc-900' : ''
+              }`}
               title={t('tracklist.customizeColumns')}
             >
               <SlidersHorizontal className="h-4 w-4" />
@@ -322,10 +323,11 @@ export default function Tracklist({
                       return (
                         <label
                           key={col.id}
-                          className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs font-medium transition select-none ${isLocked
+                          className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs font-medium transition select-none ${
+                            isLocked
                               ? 'text-zinc-600 cursor-not-allowed opacity-60'
                               : 'text-zinc-300 hover:bg-zinc-900/60 hover:text-zinc-100 cursor-pointer'
-                            }`}
+                          }`}
                         >
                           <input
                             type="checkbox"
@@ -376,19 +378,21 @@ export default function Tracklist({
                 return (
                   <th
                     key={col.id}
-                    className={`py-3 px-3 relative select-none ${alignmentClass} ${isSortable ? 'cursor-pointer hover:text-zinc-300' : ''
-                      } ${isSorted ? 'text-primary font-bold' : ''}`}
+                    className={`py-3 px-3 relative select-none ${alignmentClass} ${
+                      isSortable ? 'cursor-pointer hover:text-zinc-300' : ''
+                    } ${isSorted ? 'text-primary font-bold' : ''}`}
                     onClick={
                       isSortable && col.sortField ? () => handleSort(col.sortField!) : undefined
                     }
                   >
                     <div
-                      className={`flex items-center gap-1.5 ${col.align === 'center'
+                      className={`flex items-center gap-1.5 ${
+                        col.align === 'center'
                           ? 'justify-center'
                           : col.align === 'right'
                             ? 'justify-end'
                             : 'justify-start'
-                        }`}
+                      }`}
                     >
                       <span>{t(col.labelKey)}</span>
                       {isSortable &&

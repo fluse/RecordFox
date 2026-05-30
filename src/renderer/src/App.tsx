@@ -55,12 +55,7 @@ function AppContent({ appState }: { appState: UseAppReturn }): React.JSX.Element
           }`}
         >
           <div className="min-h-0">
-            <DjMixer
-              trackA={loadedTrackA}
-              trackB={loadedTrackB}
-              onUpdateBpm={handleUpdateBpmInState}
-              onLoadTrack={handleLoadTrack}
-            />
+            <DjMixer trackA={loadedTrackA} trackB={loadedTrackB} onLoadTrack={handleLoadTrack} />
           </div>
         </div>
         {/* Toggle Button */}
